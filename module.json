@@ -1,0 +1,166 @@
+{
+  "name": "Yamaha RCP",
+  "type": "TCP Client",
+  "path": "Hardware",
+
+  "version": "0.1.0",
+  "description": "Control Yamaha digital consoles (CL/QL first; DM/Rivage planned) over the Remote Control Protocol (RCP). Two-way: sends commands and reflects console-side changes via NOTIFY.",
+  "url": "https://github.com/vkoeppel/Yamaha-RCP-Chataigne-Module",
+  "downloadURL": "https://github.com/vkoeppel/Yamaha-RCP-Chataigne-Module/archive/master.zip",
+
+  "hasInput": true,
+  "hasOutput": true,
+  "hideDefaultCommands": false,
+
+  "defaults": {
+    "autoAdd": false,
+    "firstValueIsTheName": false,
+    "Output": {
+      "local": false,
+      "RemoteHost": "127.0.0.1",
+      "RemotePort": 49280
+    }
+  },
+
+  "hideDefaultParameters": [
+    "autoAdd",
+    "protocol",
+    "messageStructure",
+    "firstValueIsTheName",
+    "receiveFrequency",
+    "output/local"
+  ],
+
+  "parameters": {
+    "Console Model": {
+      "type": "Enum",
+      "options": { "CL1": "CL1", "CL3": "CL3", "CL5": "CL5", "QL1": "QL1", "QL5": "QL5", "DM3": "DM3", "DM7": "DM7", "DM7 Compact": "DM7C" },
+      "default": "CL5",
+      "description": "Selects the console model; sizes the channel-group tree to that desk. Changing it rebuilds/resizes the tree live."
+    }
+  },
+
+  "scripts": [
+    "moduleScript.js"
+  ],
+
+  "values": {},
+
+  "commands": {
+    "Set Fader Level": {
+      "menu": "Channel",
+      "callback": "cmdSetFaderLevel",
+      "parameters": {
+        "Group": {
+          "type": "Enum",
+          "options": { "Input Channels": "InCh", "Stereo In": "StInCh", "Mix": "Mix", "Matrix": "Mtrx", "Stereo Main": "St", "DCA": "DCA" },
+          "default": "InCh"
+        },
+        "Channel": { "type": "Integer", "min": 1, "max": 120, "default": 1 },
+        "Level (dB)": { "type": "Float", "min": -138, "max": 10, "default": 0 }
+      }
+    },
+    "Set Channel On": {
+      "menu": "Channel",
+      "callback": "cmdSetChannelOn",
+      "parameters": {
+        "Group": {
+          "type": "Enum",
+          "options": { "Input Channels": "InCh", "Stereo In": "StInCh", "Mix": "Mix", "Matrix": "Mtrx", "Stereo Main": "St", "DCA": "DCA", "Mute Groups (CL/QL)": "MuteMaster", "Mute Groups (DM7)": "MuteGrpCtrl" },
+          "default": "InCh"
+        },
+        "Channel": { "type": "Integer", "min": 1, "max": 120, "default": 1 },
+        "On": { "type": "Boolean", "default": true }
+      }
+    },
+    "Set Channel Name": {
+      "menu": "Channel",
+      "callback": "cmdSetChannelName",
+      "parameters": {
+        "Group": {
+          "type": "Enum",
+          "options": { "Input Channels": "InCh", "Stereo In": "StInCh", "Mix": "Mix", "Matrix": "Mtrx", "Stereo Main": "St", "DCA": "DCA", "Mute Groups (CL/QL)": "MuteMaster", "Mute Groups (DM7)": "MuteGrpCtrl" },
+          "default": "InCh"
+        },
+        "Channel": { "type": "Integer", "min": 1, "max": 120, "default": 1 },
+        "Name": { "type": "String", "default": "" }
+      }
+    },
+    "Set Channel Color": {
+      "menu": "Channel",
+      "callback": "cmdSetChannelColor",
+      "parameters": {
+        "Group": {
+          "type": "Enum",
+          "options": { "Input Channels": "InCh", "Stereo In": "StInCh", "Mix": "Mix", "Matrix": "Mtrx", "Stereo Main": "St", "DCA": "DCA" },
+          "default": "InCh"
+        },
+        "Channel": { "type": "Integer", "min": 1, "max": 120, "default": 1 },
+        "Color": {
+          "type": "Enum",
+          "options": {
+            "Blue": "Blue",
+            "Orange": "Orange",
+            "Yellow": "Yellow",
+            "Purple": "Purple",
+            "Cyan": "Cyan",
+            "Magenta": "Magenta",
+            "Red": "Red",
+            "Green": "Green",
+            "LtGreen (DM)": "LtGreen",
+            "White (DM)": "White",
+            "Off (uncolored)": "Off"
+          },
+          "default": "Blue"
+        }
+      }
+    },
+    "Recall Scene": {
+      "menu": "Scene",
+      "callback": "cmdRecallScene",
+      "parameters": {
+        "Scene": { "type": "String", "default": "1", "description": "CL/QL: scene number (e.g. 5). DM7: N.MM (e.g. 1.00)." },
+        "Bank (DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
+      }
+    },
+    "Scene Recall Inc": {
+      "menu": "Scene",
+      "callback": "cmdSceneInc",
+      "parameters": {
+        "Bank (DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
+      }
+    },
+    "Scene Recall Dec": {
+      "menu": "Scene",
+      "callback": "cmdSceneDec",
+      "parameters": {
+        "Bank (DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
+      }
+    },
+    "Generic Set": {
+      "menu": "Generic",
+      "callback": "cmdGenericSet",
+      "parameters": {
+        "Address": { "type": "String", "default": "MIXER:Current/InCh/Fader/Level" },
+        "X": { "type": "Integer", "min": 0, "default": 0 },
+        "Y": { "type": "Integer", "min": 0, "default": 0 },
+        "Value": { "type": "String", "default": "0" },
+        "Quote Value": { "type": "Boolean", "default": false }
+      }
+    },
+    "Generic Get": {
+      "menu": "Generic",
+      "callback": "cmdGenericGet",
+      "parameters": {
+        "Address": { "type": "String", "default": "MIXER:Current/InCh/Fader/Level" },
+        "X": { "type": "Integer", "min": 0, "default": 0 },
+        "Y": { "type": "Integer", "min": 0, "default": 0 }
+      }
+    },
+    "Sync Now": {
+      "menu": "Generic",
+      "callback": "cmdSyncNow",
+      "parameters": {}
+    }
+  }
+}
