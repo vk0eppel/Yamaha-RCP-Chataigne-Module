@@ -15,7 +15,7 @@ newline-delimited TCP protocol on **port 49280**.
 |--------------|---------------------------------|
 | CL / QL      | ✅ CL1 / CL3 / CL5 / QL1 / QL5    |
 | DM7 / DM3    | ✅ DM7, DM7 Compact, DM3 (unverified on hardware — see Known items) |
-| Rivage PM    | ⏳ planned (add a sibling table) |
+| Rivage PM    | ✅ PM (unverified on hardware — see Known items) |
 
 **Scope:** fader level, on/mute, name, and color across **all channel groups**,
 plus scene recall (+ inc/dec) and generic `Get`/`Set`. Pick your **Console Model**
@@ -29,6 +29,10 @@ and the tree is sized to it:
 - **DM3**: Input Channels (16), Stereo In (2), Mix (6), Matrix (2), Stereo Main (2),
   Mute Groups (6) — no DCA. Scene recall: `ssrecall_ex scene_a/b <n>` (Bank A/B,
   integer scene number).
+- **Rivage PM**: Input Channels (288), Mix (60), Matrix (36), Stereo Main (4), DCA
+  (24), Mute Groups (12) — no Stereo In. Name/color are strings (not binary). Scene
+  recall: `ssrecallt_ex MIXER:Lib/Scene "N.MM"` (no bank). Note the large tree (~1600
+  values) takes a moment to build and makes Sync Now heavy.
 
 Level / On / Name / Color use the same wire format across all models (DM name/color
 `binary` values are quoted strings/names). Only scene recall varies, per the table above.
@@ -136,8 +140,13 @@ These are isolated in the code so they're one-line fixes:
    - **Scene recall** — DM7 `ssrecallt_ex scene_a "N.MM"`, DM3 `ssrecall_ex scene_a <n>`.
    - **DM7 palette** — 11 colours (…Green, **LtGreen**, **White**, Off); the wire
      spelling of LtGreen/White is from the editor display and unconfirmed.
-   - **DM3 palette** — assumed to be CL/QL's 9 colours (Companion's default for DM3);
-     it may actually be DM7's 11 — unconfirmed.
+   - **DM3 palette** — the DM series (DM3 & DM7) uses the 11-colour palette.
+4. **Rivage PM (whole model).** Derived from the Rivage parameter table + Companion.
+   Name/colour are `string` (names), scene recall is `ssrecallt_ex MIXER:Lib/Scene
+   "N.MM"`. Unverified: the exact colour palette (assumed CL/QL's 9) and scene
+   inc/dec (not in the parameter dump — the module still sends `event
+   MIXER:Lib/Scene/RecallInc`, which may or may not work). Channel counts are the RCP
+   maxima; a real system may expose fewer.
 
 There is no scriptable connection-status flag exposed to modules, so the module
 does not auto-sync on connect. **After connecting, run the `Sync Now` command**

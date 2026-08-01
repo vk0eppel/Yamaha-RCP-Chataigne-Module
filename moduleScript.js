@@ -67,6 +67,16 @@ var DM3_GROUPS = [
   { key: "MuteGrpCtrl", label: "Mute Groups", mute: true }
 ];
 
+// Rivage PM: large frame, string (not binary) name/color, no Stereo In group.
+var RIVAGE_GROUPS = [
+  { key: "InCh",       label: "Input Channels" },
+  { key: "Mix",        label: "Mix"            },
+  { key: "Mtrx",       label: "Matrix"         },
+  { key: "St",         label: "Stereo Main"    },
+  { key: "DCA",        label: "DCA"            },
+  { key: "MuteMaster", label: "Mute Groups", mute: true }
+];
+
 // Per-model channel counts.
 // CL/QL: from l-r-r/Yamaha-CLQL-Chataigne-Module models.json (Stereo In is the
 // real 8, not the RCP table's max of 16). DM7: from DM7 Parameters-2.txt.
@@ -83,6 +93,11 @@ var DM7_MODELS = {
 };
 var DM3_MODELS = {
   DM3: { InCh: 16, StInCh: 2, Mix: 6, Mtrx: 2, St: 2, MuteGrpCtrl: 6 }
+};
+// Rivage PM channel counts are the RCP maximums (real systems may have fewer,
+// depending on DSP config). One "PM" model covers the family.
+var RIVAGE_MODELS = {
+  PM: { InCh: 288, Mix: 60, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 }
 };
 
 // Build the parameter specs for a group from its address prefix.
@@ -103,28 +118,32 @@ function specsForGroup(g, colors) {
 function attachSpecs(groups, colors) { for (var i = 0; i < groups.length; i++) groups[i].params = specsForGroup(groups[i], colors); }
 attachSpecs(CLQL_GROUPS, CLQL_COLORS);
 attachSpecs(DM7_GROUPS, DM_COLORS);
-attachSpecs(DM3_GROUPS, DM_COLORS); // DM3 shares the DM7 palette
+attachSpecs(DM3_GROUPS, DM_COLORS);     // DM3 shares the DM7 palette
+attachSpecs(RIVAGE_GROUPS, CLQL_COLORS); // Rivage palette assumed = CL/QL's 9 (unconfirmed)
 
 // Scene-recall descriptors (verbs/format differ per console, from Companion):
 //   verb    "ssrecall_ex" (CL/QL, DM3) | "ssrecallt_ex" (DM7)
 //   target  "MIXER:Lib/Scene" (CL/QL) | "bank" -> scene_a / scene_b (DM3, DM7)
 //   quote   quote the scene value? (DM7 uses "N.MM" strings; others integers)
 //   incBank append scene_a/b to RecallInc/Dec? (DM7 only)
-var CLQL_SCENE = { verb: "ssrecall_ex",  target: "MIXER:Lib/Scene", quote: false, incBank: false };
-var DM7_SCENE  = { verb: "ssrecallt_ex", target: "bank",            quote: true,  incBank: true  };
-var DM3_SCENE  = { verb: "ssrecall_ex",  target: "bank",            quote: false, incBank: false };
+var CLQL_SCENE   = { verb: "ssrecall_ex",  target: "MIXER:Lib/Scene", quote: false, incBank: false };
+var DM7_SCENE    = { verb: "ssrecallt_ex", target: "bank",            quote: true,  incBank: true  };
+var DM3_SCENE    = { verb: "ssrecall_ex",  target: "bank",            quote: false, incBank: false };
+var RIVAGE_SCENE = { verb: "ssrecallt_ex", target: "MIXER:Lib/Scene", quote: true,  incBank: false };
 
 var PARAM_TABLES = {
-  clql: { label: "CL / QL", groups: CLQL_GROUPS, models: CLQL_MODELS, defaultModel: "CL5", scene: CLQL_SCENE, colors: CLQL_COLORS },
-  dm7:  { label: "DM7",     groups: DM7_GROUPS,  models: DM7_MODELS,  defaultModel: "DM7", scene: DM7_SCENE,  colors: DM_COLORS },
-  dm3:  { label: "DM3",     groups: DM3_GROUPS,  models: DM3_MODELS,  defaultModel: "DM3", scene: DM3_SCENE,  colors: DM_COLORS }
+  clql:   { label: "CL / QL",   groups: CLQL_GROUPS,   models: CLQL_MODELS,   defaultModel: "CL5", scene: CLQL_SCENE,   colors: CLQL_COLORS },
+  dm7:    { label: "DM7",       groups: DM7_GROUPS,    models: DM7_MODELS,    defaultModel: "DM7", scene: DM7_SCENE,    colors: DM_COLORS },
+  dm3:    { label: "DM3",       groups: DM3_GROUPS,    models: DM3_MODELS,    defaultModel: "DM3", scene: DM3_SCENE,    colors: DM_COLORS },
+  rivage: { label: "Rivage PM", groups: RIVAGE_GROUPS, models: RIVAGE_MODELS, defaultModel: "PM",  scene: RIVAGE_SCENE, colors: CLQL_COLORS }
 };
 
 // Which parameter table each console model uses.
 var MODEL_TABLE = {
   CL1: "clql", CL3: "clql", CL5: "clql", QL1: "clql", QL5: "clql",
   DM7: "dm7", DM7C: "dm7",
-  DM3: "dm3"
+  DM3: "dm3",
+  PM: "rivage"
 };
 
 // =========================================================================
