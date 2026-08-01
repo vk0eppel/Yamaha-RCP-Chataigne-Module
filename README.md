@@ -15,7 +15,7 @@ newline-delimited TCP protocol on **port 49280**.
 |--------------|---------------------------------|
 | CL / QL      | ✅ CL1 / CL3 / CL5 / QL1 / QL5    |
 | DM7 / DM3    | ✅ DM7, DM7 Compact, DM3 (unverified on hardware — see Known items) |
-| Rivage PM    | ✅ PM (unverified on hardware — see Known items) |
+| Rivage PM    | ✅ DSP-RX / DSP-RX-EX / DSP-R10 / CSD-R7 (unverified on hardware) |
 
 **Scope:** fader level, on/mute, name, and color across **all channel groups**,
 plus scene recall (+ inc/dec) and generic `Get`/`Set`. Pick your **Console Model**
@@ -45,7 +45,10 @@ and the tree is sized to it:
   Sync Now heavy.
 
 Level / On / Name / Color use the same wire format across all models (DM name/color
-`binary` values are quoted strings/names). Only scene recall varies, per the table above.
+`binary` values are sent as quoted strings/names, just like CL/QL). What varies is the
+scene-recall verb (per the lists above) and the colour palette (CL/QL & Rivage: 9
+colours + Off; DM3 & DM7: 11, adding LtGreen & White). The value tree is **collapsed
+by default**.
 
 ## Install
 
@@ -56,10 +59,10 @@ Copy this folder into your Chataigne modules directory:
 ```
 
 Then in Chataigne: add the **Yamaha RCP** module, set the connection **remote host**
-to your console's IP (port defaults to `49280`), and pick your **Console Model**
-(**CL1 / CL3 / CL5 / QL1 / QL5**). The channel-group tree is sized to that desk
-automatically (e.g. QL1 = 32 input channels + 16 mix buses; CL5 = 72 + 24) and
-resizes live if you change the model.
+to your console's IP (port defaults to `49280`), and pick your **Console Model** —
+CL1/CL3/CL5/QL1/QL5, DM3, DM7, DM7 Compact, or a Rivage DSP engine (see Status). The
+channel-group tree is sized to that desk automatically (e.g. QL1 = 32 input channels +
+16 mix buses; CL5 = 72 + 24) and resizes live if you change the model.
 
 After editing the module files, use *File → Reload custom modules* (you may need to
 delete and re-add the module instance).
@@ -67,21 +70,22 @@ delete and re-add the module instance).
 ## Commands
 
 Each channel command takes a **Group** selector (Input Channels, Stereo In, Mix,
-Matrix, Stereo Main, DCA — plus Mute Groups for On/Name) and a 1-based channel.
+Matrix, Stereo Main, DCA — plus Mute Groups for On/Name; not every group exists on
+every model — an unsupported group/channel is simply ignored) and a 1-based channel.
 
 | Command | Notes |
 |---|---|
 | Set Fader Level | group, channel, level in dB (−138 = −∞, +10 max) |
 | Set Channel On | group, channel, on/off |
 | Set Channel Name | group, channel, string |
-| Set Channel Color | group, channel, one of 8 colors + Off |
-| Recall Scene / Scene Inc / Scene Dec | scene number 0–300 |
+| Set Channel Color | group, channel, colour name (9 for CL/QL & Rivage, 11 for DM) |
+| Recall Scene | scene number (string) + Bank A/B; CL/QL & DM3 use an integer, DM7 & Rivage use `N.MM` |
+| Scene Inc / Scene Dec | step the current scene up/down (+ Bank A/B for DM) |
 | Generic Set / Generic Get | raw RCP address + X/Y + value (escape hatch) |
-| Sync Now | request all current values and (re)subscribe |
+| Sync Now | request all current values from the console |
 
 Feedback appears under **Values → `<group>` → NN** (e.g. `Input Channels → 01`,
-`Mix → 03`, `DCA → 02`) with Level / On / Name / Color, plus **Values → Scene →
-Current**.
+`Mix → 03`, `DCA → 02`) with Level / On / Name / Color.
 
 ## Offline testing (no console)
 
@@ -138,11 +142,14 @@ These are isolated in the code so they're one-line fixes:
    known-good RCP client such as Bitfocus Companion talking to the console on
    port 49280. (Note: the CL/QL *Editor* won't help here - it uses the editor
    protocol on port 50000, not RCP.)
-2. **Scene recall verbs.** Scene commands now use the forms the Bitfocus Companion
-   module uses: CL/QL `ssrecall_ex MIXER:Lib/Scene <n>` and `event
-   MIXER:Lib/Scene/RecallInc`; DM7 `ssrecallt_ex scene_a "<N.MM>"` and `event
-   MIXER:Lib/Scene/RecallInc scene_a`. These are sourced from Companion but unverified
-   here — confirm on a desk.
+2. **Scene recall verbs.** Scene commands use the forms from the Bitfocus Companion
+   module (sourced but unverified — confirm on a desk):
+   - CL/QL: `ssrecall_ex MIXER:Lib/Scene <n>`
+   - DM3: `ssrecall_ex scene_a <n>` (integer)
+   - DM7: `ssrecallt_ex scene_a "<N.MM>"`
+   - Rivage: `ssrecallt_ex MIXER:Lib/Scene "<N.MM>"`
+
+   Inc/Dec are `event MIXER:Lib/Scene/RecallInc` / `RecallDec` (DM7 appends `scene_a/b`).
 3. **DM7 / DM3 (whole models).** DM support is derived from the Companion source + the
    DM parameter tables but has **not** been tested on a DM console. Level/On/Name/Color
    reuse the same wire format as CL/QL (`binary` name/color are sent as quoted
