@@ -29,10 +29,20 @@ and the tree is sized to it:
 - **DM3**: Input Channels (16), Stereo In (2), Mix (6), Matrix (2), Stereo Main (2),
   Mute Groups (6) — no DCA. Scene recall: `ssrecall_ex scene_a/b <n>` (Bank A/B,
   integer scene number).
-- **Rivage PM**: Input Channels (288), Mix (60), Matrix (36), Stereo Main (4), DCA
-  (24), Mute Groups (12) — no Stereo In. Name/color are strings (not binary). Scene
-  recall: `ssrecallt_ex MIXER:Lib/Scene "N.MM"` (no bank). Note the large tree (~1600
-  values) takes a moment to build and makes Sync Now heavy.
+- **Rivage PM**: sized by **DSP engine** (capacity is set by the engine, not the
+  surface). Groups: Input Channels, Mix, Matrix, Stereo Main (4), DCA (24), Mute
+  Groups (12) — no Stereo In. Name/color are strings (not binary). Scene recall:
+  `ssrecallt_ex MIXER:Lib/Scene "N.MM"` (no bank). Pick the engine your desk runs:
+
+  | Model (engine) | Inputs | Mix | Matrix | Used by |
+  |---|---|---|---|---|
+  | DSP-RX | 120 | 48 | 24 | PM3 / PM5 |
+  | DSP-RX-EX | 288 | 72 | 36 | PM3 / PM5 |
+  | DSP-R10 | 144 | 72 | 36 | PM10 |
+  | CSD-R7 | 144 | 60 | 24 | PM7 |
+
+  The DSP-RX-EX tree is large (~1600 values) — it takes a moment to build and makes
+  Sync Now heavy.
 
 Level / On / Name / Color use the same wire format across all models (DM name/color
 `binary` values are quoted strings/names). Only scene recall varies, per the table above.

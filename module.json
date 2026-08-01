@@ -34,7 +34,7 @@
   "parameters": {
     "Console Model": {
       "type": "Enum",
-      "options": { "CL1": "CL1", "CL3": "CL3", "CL5": "CL5", "QL1": "QL1", "QL5": "QL5", "DM3": "DM3", "DM7": "DM7", "DM7 Compact": "DM7C", "Rivage PM": "PM" },
+      "options": { "CL1": "CL1", "CL3": "CL3", "CL5": "CL5", "QL1": "QL1", "QL5": "QL5", "DM3": "DM3", "DM7": "DM7", "DM7 Compact": "DM7C", "Rivage DSP-RX (PM3/5)": "RX", "Rivage DSP-RX-EX (PM3/5)": "RXEX", "Rivage PM10 (DSP-R10)": "R10", "Rivage PM7 (CSD-R7)": "PM7" },
       "default": "CL5",
       "description": "Selects the console model; sizes the channel-group tree to that desk. Changing it rebuilds/resizes the tree live."
     }

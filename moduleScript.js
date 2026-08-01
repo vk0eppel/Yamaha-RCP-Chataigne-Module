@@ -94,10 +94,14 @@ var DM7_MODELS = {
 var DM3_MODELS = {
   DM3: { InCh: 16, StInCh: 2, Mix: 6, Mtrx: 2, St: 2, MuteGrpCtrl: 6 }
 };
-// Rivage PM channel counts are the RCP maximums (real systems may have fewer,
-// depending on DSP config). One "PM" model covers the family.
+// Rivage capacity is set by the DSP engine, not the control surface, so the
+// models are named by engine. PM3/PM5 run DSP-RX or DSP-RX-EX; PM10 runs DSP-R10;
+// PM7 has its own integrated DSP (CSD-R7). St/DCA/Mute are constant per the table.
 var RIVAGE_MODELS = {
-  PM: { InCh: 288, Mix: 60, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 }
+  RX:   { InCh: 120, Mix: 48, Mtrx: 24, St: 4, DCA: 24, MuteMaster: 12 },
+  RXEX: { InCh: 288, Mix: 72, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 },
+  R10:  { InCh: 144, Mix: 72, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 },
+  PM7:  { InCh: 144, Mix: 60, Mtrx: 24, St: 4, DCA: 24, MuteMaster: 12 }
 };
 
 // Build the parameter specs for a group from its address prefix.
@@ -135,7 +139,7 @@ var PARAM_TABLES = {
   clql:   { label: "CL / QL",   groups: CLQL_GROUPS,   models: CLQL_MODELS,   defaultModel: "CL5", scene: CLQL_SCENE,   colors: CLQL_COLORS },
   dm7:    { label: "DM7",       groups: DM7_GROUPS,    models: DM7_MODELS,    defaultModel: "DM7", scene: DM7_SCENE,    colors: DM_COLORS },
   dm3:    { label: "DM3",       groups: DM3_GROUPS,    models: DM3_MODELS,    defaultModel: "DM3", scene: DM3_SCENE,    colors: DM_COLORS },
-  rivage: { label: "Rivage PM", groups: RIVAGE_GROUPS, models: RIVAGE_MODELS, defaultModel: "PM",  scene: RIVAGE_SCENE, colors: CLQL_COLORS }
+  rivage: { label: "Rivage PM", groups: RIVAGE_GROUPS, models: RIVAGE_MODELS, defaultModel: "R10", scene: RIVAGE_SCENE, colors: CLQL_COLORS }
 };
 
 // Which parameter table each console model uses.
@@ -143,7 +147,7 @@ var MODEL_TABLE = {
   CL1: "clql", CL3: "clql", CL5: "clql", QL1: "clql", QL5: "clql",
   DM7: "dm7", DM7C: "dm7",
   DM3: "dm3",
-  PM: "rivage"
+  RX: "rivage", RXEX: "rivage", R10: "rivage", PM7: "rivage"
 };
 
 // =========================================================================
