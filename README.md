@@ -169,13 +169,27 @@ There is no scriptable connection-status flag exposed to modules, so the module
 does not auto-sync on connect. **After connecting, run the `Sync Now` command**
 to prime values from the console (it sends a `get` for every modeled parameter).
 
-> Note: Chataigne's script engine is a restricted JS dialect. Avoid:
-> `try/catch`, regex literals, the `delete` operator, and globals such as
-> `isNaN`, `String()`, and `Math` (use `"" + x` to stringify and plain
-> arithmetic/`parseInt` instead). Also: multi-file `scripts` do NOT share
-> scope (keep everything in `Yam-RCP.js`); `local.send()` does not append
-> the line delimiter (we add `"\n"`); and `getChild()` logs a warning for a
-> missing child, so only call it for children you know exist.
+> Note: Chataigne's script engine (JUCE's `JavascriptEngine`) is a restricted,
+> ES5-ish dialect. Avoid: `try/catch`, regex literals, the `delete` operator,
+> and globals such as `isNaN` and `String()` (use `"" + x` to stringify;
+> `parseInt`/`parseFloat`/plain arithmetic are available).
+>
+> `Math` **is** available, but as JUCE's subset — not full ECMAScript. Present:
+> `abs round floor ceil sqrt sqr pow exp log log10 min max sign hypot random`,
+> `sin/asin cos/acos tan/atan` (+ `h` variants), `toDegrees/toRadians`, and the
+> usual constants (`PI`, `E`, `SQRT2`, …). Gotchas: **no `Math.atan2`** (nor
+> `trunc`/`cbrt`/`log2`), and `Math.min`/`Math.max` take **exactly two** args.
+> (Verified against benkuper's JUCE fork, `modules/juce_core/javascript/juce_Javascript.cpp`.)
+>
+> On files: keep all *executable* module code in `Yam-RCP.js` — each entry in the
+> `scripts` array runs in its own scope, so a second script can't see this one's
+> functions. What you _can_ split out: large static data into a `.json` loaded at
+> runtime via `util.readFile("foo.json", true, true)` (as the CL/QL reference
+> module does for its parameter tables), and mapping/filter scripts — a standalone
+> `filter(values, min, max)` file attached in the UI — which run in their own scope
+> anyway (as the ADM-OSC module does). `local.send()` does not append the line
+> delimiter (we add `"\n"`); and `getChild()` logs a warning for a missing child,
+> so only call it for children you know exist.
 >
 > Landmine: the engine coerces `undefined` to `0` in loose comparisons, so
 > `0 != undefined` is **false** and `0 == undefined` is **true**. Never write
