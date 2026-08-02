@@ -14,8 +14,8 @@ newline-delimited TCP protocol on **port 49280**.
 | Console      | Status                          |
 |--------------|---------------------------------|
 | CL / QL      | ✅ CL1 / CL3 / CL5 / QL1 / QL5    |
-| DM7 / DM3    | ✅ DM7, DM7 Compact, DM3 (unverified on hardware — see Known items) |
-| Rivage PM    | ✅ DSP-RX / DSP-RX-EX / DSP-R10 / CSD-R7 (unverified on hardware) |
+| DM7 / DM3    | ✅ DM7, DM7 Compact, DM3 — verified against the official Yamaha OSC specs (DM3 v1.0.0, DM7 v1.1.0) and desk editors; see Known items for what's still open |
+| Rivage PM    | ✅ DSP-RX / DSP-RX-EX / DSP-R10 / CSD-R7 — verified against the Rivage PM OSC spec (v1.0.2) and editor; see Known items |
 
 **Scope:** fader level, on/mute, name, and color across **all channel groups**,
 plus scene recall (+ inc/dec) and generic `Get`/`Set`. Pick your **Console Model**
@@ -39,16 +39,23 @@ and the tree is sized to it:
   | DSP-RX | 120 | 48 | 24 | PM3 / PM5 |
   | DSP-RX-EX | 288 | 72 | 36 | PM3 / PM5 |
   | DSP-R10 | 144 | 72 | 36 | PM10 |
-  | CSD-R7 | 144 | 60 | 24 | PM7 |
+  | CSD-R7 | 144 | 60 | 36 | PM7 |
 
   The DSP-RX-EX tree is large (~1600 values) — it takes a moment to build and makes
   Sync Now heavy.
 
 Level / On / Name / Color use the same wire format across all models (DM name/color
 `binary` values are sent as quoted strings/names, just like CL/QL). What varies is the
-scene-recall verb (per the lists above) and the colour palette (CL/QL & Rivage: 9
-colours + Off; DM3 & DM7: 11, adding LtGreen & White). The value tree is **collapsed
-by default**.
+scene-recall verb (per the lists above) and the colour palette (colour name sent quoted;
+`Off` clears the colour everywhere):
+
+- **CL/QL**: Blue, Orange, Yellow, Purple, Cyan, Magenta, Red, Green, Off (9).
+- **DM3**: the same 8-colour set as CL/QL, Off (9).
+- **DM7**: the CL/QL set plus LtGreen & White → 11.
+- **Rivage**: identical to DM7's 11-colour palette.
+
+The single **Set Channel Color** command lists the union of all names; a desk ignores any
+it doesn't recognise. The value tree is **collapsed by default**.
 
 ## Install
 
@@ -78,7 +85,7 @@ every model — an unsupported group/channel is simply ignored) and a 1-based ch
 | Set Fader Level | group, channel, level in dB (−138 = −∞, +10 max) |
 | Set Channel On | group, channel, on/off |
 | Set Channel Name | group, channel, string |
-| Set Channel Color | group, channel, colour name (9 for CL/QL & Rivage, 11 for DM) |
+| Set Channel Color | group, channel, colour name (per-model palette: CL/QL & DM3 = 9, DM7 & Rivage = 11) |
 | Recall Scene | scene number (string) + Bank A/B; CL/QL & DM3 use an integer, DM7 & Rivage use `N.MM` |
 | Scene Inc / Scene Dec | step the current scene up/down (+ Bank A/B for DM) |
 | Generic Set / Generic Get | raw RCP address + X/Y + value (escape hatch) |
@@ -130,40 +137,43 @@ To see line-by-line traffic inside Chataigne, set `DEBUG = true` at the top of
 > hardware, point the module at the **console's** IP (the same one the Editor connects
 > to when online).
 
-## Known items to confirm on real hardware
+## Verified against the official OSC specs
+
+DM3 / DM7 / Rivage were cross-checked against Yamaha's own OSC specifications (DM3
+v1.0.0, DM7 v1.1.0, Rivage PM v1.0.2). OSC uses the **same `MIXER:Current/...` address
+tree** as RCP, so the specs authoritatively confirm, for those models:
+
+- **Addresses** — `Fader/Level`, `Fader/On`, `Label/Name`, `Label/Color`; mute is
+  `MuteMaster/On` (CL/QL & Rivage) vs `MuteGrpCtrl/On` (DM).
+- **Fader scaling** — integer, ×100, `-32768` = −∞, max `1000` (+10 dB).
+- **Channel counts** — DM3, DM7/DM7 Compact, and all four Rivage DSP engines.
+- **Scene recall** — DM3 `ssrecall_ex scene_a <0-99>`, DM7 `ssrecallt_ex scene_a
+  "N.MM"` (1.00–499.99), Rivage `ssrecallt_ex MIXER:Lib/Scene "N.MM"`.
+- **DM7 scene inc/dec** — `event MIXER:Lib/Scene/RecallInc scene_a` (with bank suffix).
+- **Colour palettes** — confirmed on the DM7 / DM3 / Rivage editors (see the palettes
+  above; DM7 and Rivage share the same 11-colour set, DM3 uses the CL/QL 8-colour set).
+  Note the DM3 OSC spec's 11-colour Table 3 is *wrong* — the DM3 editor exposes only the
+  CL/QL 8-colour set.
+
+## Still to confirm on real hardware
 
 These are isolated in the code so they're one-line fixes:
 
 1. **NOTIFY subscription.** CL/QL is assumed to push change notifications on any
    open RCP session (so `subscribeAll()` in `Yam-RCP.js` is empty and we only
-   prime state with `get`). If your desk needs an explicit subscribe, add it there.
-   To learn the exact handshake, connect straight to the console and watch whether
-   desk-side changes arrive as `NOTIFY` (set `DEBUG = true`); if not, Wireshark a
-   known-good RCP client such as Bitfocus Companion talking to the console on
-   port 49280. (Note: the CL/QL *Editor* won't help here - it uses the editor
-   protocol on port 50000, not RCP.)
-2. **Scene recall verbs.** Scene commands use the forms from the Bitfocus Companion
-   module (sourced but unverified — confirm on a desk):
-   - CL/QL: `ssrecall_ex MIXER:Lib/Scene <n>`
-   - DM3: `ssrecall_ex scene_a <n>` (integer)
-   - DM7: `ssrecallt_ex scene_a "<N.MM>"`
-   - Rivage: `ssrecallt_ex MIXER:Lib/Scene "<N.MM>"`
-
-   Inc/Dec are `event MIXER:Lib/Scene/RecallInc` / `RecallDec` (DM7 appends `scene_a/b`).
-3. **DM7 / DM3 (whole models).** DM support is derived from the Companion source + the
-   DM parameter tables but has **not** been tested on a DM console. Level/On/Name/Color
-   reuse the same wire format as CL/QL (`binary` name/color are sent as quoted
-   strings/names, exactly as Companion does). To verify:
-   - **Scene recall** — DM7 `ssrecallt_ex scene_a "N.MM"`, DM3 `ssrecall_ex scene_a <n>`.
-   - **DM7 palette** — 11 colours (…Green, **LtGreen**, **White**, Off); the wire
-     spelling of LtGreen/White is from the editor display and unconfirmed.
-   - **DM3 palette** — the DM series (DM3 & DM7) uses the 11-colour palette.
-4. **Rivage PM (whole model).** Derived from the Rivage parameter table + Companion.
-   Name/colour are `string` (names), scene recall is `ssrecallt_ex MIXER:Lib/Scene
-   "N.MM"`. Unverified: the exact colour palette (assumed CL/QL's 9) and scene
-   inc/dec (not in the parameter dump — the module still sends `event
-   MIXER:Lib/Scene/RecallInc`, which may or may not work). Channel counts are the RCP
-   maxima; a real system may expose fewer.
+   prime state with `get`). The OSC specs don't help here — OSC is a separate
+   transport and says nothing about RCP's push behaviour. If your desk needs an
+   explicit subscribe, add it there. To learn the exact handshake, connect straight to
+   the console and watch whether desk-side changes arrive as `NOTIFY` (set `DEBUG =
+   true`); if not, Wireshark a known-good RCP client such as Bitfocus Companion talking
+   to the console on port 49280. (Note: the CL/QL *Editor* won't help — it uses the
+   editor protocol on port 50000, not RCP.)
+2. **Scene inc/dec for DM3 & Rivage.** Neither the DM3 nor the Rivage OSC spec documents
+   scene inc/dec (only DM7 does). The module still sends `event MIXER:Lib/Scene/RecallInc`
+   / `RecallDec` for them (no bank suffix), which may or may not work — confirm on a desk.
+3. **CL/QL.** No Yamaha OSC spec was available for CL/QL, so its addresses, scene verbs
+   (`ssrecall_ex MIXER:Lib/Scene <n>`), and 9-colour palette remain sourced from the
+   Bitfocus Companion module rather than a first-party spec.
 
 There is no scriptable connection-status flag exposed to modules, so the module
 does not auto-sync on connect. **After connecting, run the `Sync Now` command**

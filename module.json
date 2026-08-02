@@ -107,8 +107,8 @@
             "Magenta": "Magenta",
             "Red": "Red",
             "Green": "Green",
-            "LtGreen (DM)": "LtGreen",
-            "White (DM)": "White",
+            "LtGreen (DM7, Rivage)": "LtGreen",
+            "White (DM7, Rivage)": "White",
             "Off (uncolored)": "Off"
           },
           "default": "Blue"
