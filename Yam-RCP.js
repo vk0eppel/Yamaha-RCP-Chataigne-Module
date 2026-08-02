@@ -87,9 +87,11 @@ var RIVAGE_GROUPS = [
 
 // Per-model channel counts.
 // CL/QL: from l-r-r/Yamaha-CLQL-Chataigne-Module models.json (Stereo In is the
-// real 8, not the RCP table's max of 16). DM7: from DM7 Parameters-2.txt.
+// real 8, not the RCP table's max of 16), with CL1 InCh corrected to 48 per
+// Yamaha's official Script Template command_list.pdf (CL1 0-47, CL3 0-63,
+// CL5 0-71, QL1 0-31, QL5 0-63). DM7: from DM7 Parameters-2.txt.
 var CLQL_MODELS = {
-  CL1: { InCh: 56, StInCh: 8, Mix: 24, Mtrx: 8, St: 3, DCA: 16, MuteMaster: 8 },
+  CL1: { InCh: 48, StInCh: 8, Mix: 24, Mtrx: 8, St: 3, DCA: 16, MuteMaster: 8 },
   CL3: { InCh: 64, StInCh: 8, Mix: 24, Mtrx: 8, St: 3, DCA: 16, MuteMaster: 8 },
   CL5: { InCh: 72, StInCh: 8, Mix: 24, Mtrx: 8, St: 3, DCA: 16, MuteMaster: 8 },
   QL1: { InCh: 32, StInCh: 8, Mix: 16, Mtrx: 8, St: 3, DCA: 16, MuteMaster: 8 },
