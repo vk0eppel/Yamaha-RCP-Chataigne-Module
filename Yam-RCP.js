@@ -29,11 +29,17 @@ var DEBUG = false; // flip to true during bring-up to log every line in/out
 //   Colours: the 8 named colours plus "Off" (uncolored), sent verbatim as quoted strings.
 // =========================================================================
 
-var CLQL_COLORS = ["Blue", "Orange", "Yellow", "Purple", "Cyan", "Magenta", "Red", "Green", "Off"];
-// The DM series (DM3 & DM7) has a larger palette than CL/QL (per the DM editors).
-// Exact wire spelling of the two extra names (LtGreen / White) is from the editor
-// display - verify on hardware.
-var DM_COLORS = ["Blue", "Orange", "Yellow", "Purple", "Cyan", "Magenta", "Red", "Green", "LtGreen", "White", "Off"];
+// Colour palettes, verified on the console editors. The wire value is the colour name,
+// quoted; "Off" clears the colour on every model.
+//   CL/QL  : 8 colours + Off.
+//   DM3    : same 8-colour set as CL/QL (the DM3 OSC spec's 11-colour Table 3 is wrong
+//            per the editor).
+//   DM7    : 11 - the CL/QL set plus LtGreen & White.
+//   Rivage : identical to DM7's 11-colour palette.
+var CLQL_COLORS   = ["Blue", "Orange", "Yellow", "Purple", "Cyan", "Magenta", "Red", "Green", "Off"];
+var DM3_COLORS    = ["Purple", "Magenta", "Red", "Orange", "Yellow", "Blue", "Cyan", "Green", "Off"];
+var DM7_COLORS    = ["Blue", "Orange", "Yellow", "Purple", "Cyan", "Magenta", "Red", "Green", "LtGreen", "White", "Off"];
+var RIVAGE_COLORS = DM7_COLORS;
 
 // Channel groups. The fader groups share the same address shape
 // (Fader/Level, Fader/On, Label/Name, Label/Color). The mute group is special:
@@ -103,7 +109,7 @@ var RIVAGE_MODELS = {
   RX:   { InCh: 120, Mix: 48, Mtrx: 24, St: 4, DCA: 24, MuteMaster: 12 },
   RXEX: { InCh: 288, Mix: 72, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 },
   R10:  { InCh: 144, Mix: 72, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 },
-  PM7:  { InCh: 144, Mix: 60, Mtrx: 24, St: 4, DCA: 24, MuteMaster: 12 }
+  PM7:  { InCh: 144, Mix: 60, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 }
 };
 
 // Build the parameter specs for a group from its address prefix.
@@ -123,9 +129,9 @@ function specsForGroup(g, colors) {
 }
 function attachSpecs(groups, colors) { for (var i = 0; i < groups.length; i++) groups[i].params = specsForGroup(groups[i], colors); }
 attachSpecs(CLQL_GROUPS, CLQL_COLORS);
-attachSpecs(DM7_GROUPS, DM_COLORS);
-attachSpecs(DM3_GROUPS, DM_COLORS);     // DM3 shares the DM7 palette
-attachSpecs(RIVAGE_GROUPS, CLQL_COLORS); // Rivage palette assumed = CL/QL's 9 (unconfirmed)
+attachSpecs(DM7_GROUPS, DM7_COLORS);
+attachSpecs(DM3_GROUPS, DM3_COLORS);      // DM3 uses the CL/QL 8-colour set (not DM7's)
+attachSpecs(RIVAGE_GROUPS, RIVAGE_COLORS);
 
 // Scene-recall descriptors (verbs/format differ per console, from Companion):
 //   verb    "ssrecall_ex" (CL/QL, DM3) | "ssrecallt_ex" (DM7)
@@ -139,9 +145,9 @@ var RIVAGE_SCENE = { verb: "ssrecallt_ex", target: "MIXER:Lib/Scene", quote: tru
 
 var PARAM_TABLES = {
   clql:   { label: "CL / QL",   groups: CLQL_GROUPS,   models: CLQL_MODELS,   defaultModel: "CL5", scene: CLQL_SCENE,   colors: CLQL_COLORS },
-  dm7:    { label: "DM7",       groups: DM7_GROUPS,    models: DM7_MODELS,    defaultModel: "DM7", scene: DM7_SCENE,    colors: DM_COLORS },
-  dm3:    { label: "DM3",       groups: DM3_GROUPS,    models: DM3_MODELS,    defaultModel: "DM3", scene: DM3_SCENE,    colors: DM_COLORS },
-  rivage: { label: "Rivage PM", groups: RIVAGE_GROUPS, models: RIVAGE_MODELS, defaultModel: "R10", scene: RIVAGE_SCENE, colors: CLQL_COLORS }
+  dm7:    { label: "DM7",       groups: DM7_GROUPS,    models: DM7_MODELS,    defaultModel: "DM7", scene: DM7_SCENE,    colors: DM7_COLORS },
+  dm3:    { label: "DM3",       groups: DM3_GROUPS,    models: DM3_MODELS,    defaultModel: "DM3", scene: DM3_SCENE,    colors: DM3_COLORS },
+  rivage: { label: "Rivage PM", groups: RIVAGE_GROUPS, models: RIVAGE_MODELS, defaultModel: "R10", scene: RIVAGE_SCENE, colors: RIVAGE_COLORS }
 };
 
 // Which parameter table each console model uses.
@@ -346,10 +352,17 @@ function buildValues() {
 }
 
 // Remove the whole value tree (used when switching console families).
+// Remove by the stored container reference (not the label): a container's
+// sanitized .name can differ from its label, so removeContainer(label) is not
+// guaranteed to match.
 function teardownTree() {
   var oldGroups = PARAM_TABLES[builtTableKey].groups;
-  for (var i = 0; i < oldGroups.length; i++) local.values.removeContainer(oldGroups[i].label);
-  local.values.removeContainer("Scene");
+  for (var i = 0; i < oldGroups.length; i++) {
+    var cont = groupContainers[oldGroups[i].key];
+    if (cont != undefined) local.values.removeContainer(cont);
+  }
+  var scene = local.values.getChild("Scene");
+  if (scene != undefined) local.values.removeContainer(scene);
   built = false;
   groupContainers = {};
   groupCounts = {};
@@ -458,6 +471,12 @@ function cmdSetChannelName(group, channel, name) {
 function cmdSetChannelColor(group, channel, color) {
   var spec = groupParamSpec(group, "color");
   if (spec == undefined) return;
+  // The command enum is static (it lists every model's colours). Skip colours
+  // the active console doesn't have, else the desk answers ERROR.
+  if (!contains(currentTable.colors, color)) {
+    script.logWarning("Yamaha RCP: colour '" + color + "' not valid for " + currentTable.label + " - ignored");
+    return;
+  }
   sendLine(buildSet(spec.address, channel - 1, 0, color, true));
 }
 
@@ -523,9 +542,7 @@ function applyIncoming(msg) {
     // triggers (which may fire asynchronously) is recognised as an echo.
     entry.synced = msg.val;
     setGuarded(entry.param, v);
-    return;
   }
-
 }
 
 function setGuarded(param, value) {
@@ -606,4 +623,10 @@ function readModuleParam(name, fallback) {
 // 2-character zero-padded string from an integer (matches value tree naming).
 function pad2(n) {
   return (n < 10) ? ("0" + n) : ("" + n);
+}
+
+// True if `arr` contains `val` (no Array.indexOf assumption in the engine).
+function contains(arr, val) {
+  for (var i = 0; i < arr.length; i++) if (arr[i] === val) return true;
+  return false;
 }
