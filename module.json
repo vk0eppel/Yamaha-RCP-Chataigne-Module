@@ -2,7 +2,7 @@
   "name": "Yamaha RCP",
   "type": "TCP Client",
   "path": "Hardware",
-
+  "author": "Victor Koeppel",
   "version": "0.1.0",
   "description": "Control Yamaha digital consoles (CL/QL, DM3, DM7, Rivage PM) over the Remote Control Protocol (RCP). Two-way: sends commands and reflects console-side changes via NOTIFY.",
   "url": "https://github.com/vkoeppel/Yamaha-RCP-Chataigne-Module",
@@ -41,7 +41,7 @@
   },
 
   "scripts": [
-    "moduleScript.js"
+    "Yam-RCP.js"
   ],
 
   "values": {},

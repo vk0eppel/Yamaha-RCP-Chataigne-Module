@@ -122,7 +122,7 @@ the UI/REPL. Flip `NOTIFY_SENDER = true` at the top of `test/mock-console.js` fo
 echo-to-sender behaviour.
 
 To see line-by-line traffic inside Chataigne, set `DEBUG = true` at the top of
-`moduleScript.js`.
+`Yam-RCP.js`.
 
 > Note: the real Yamaha **CL/QL Editor cannot be used as a test target** — it speaks
 > Yamaha's proprietary editor protocol on TCP **50000**, not RCP on 49280. RCP is served
@@ -135,7 +135,7 @@ To see line-by-line traffic inside Chataigne, set `DEBUG = true` at the top of
 These are isolated in the code so they're one-line fixes:
 
 1. **NOTIFY subscription.** CL/QL is assumed to push change notifications on any
-   open RCP session (so `subscribeAll()` in `moduleScript.js` is empty and we only
+   open RCP session (so `subscribeAll()` in `Yam-RCP.js` is empty and we only
    prime state with `get`). If your desk needs an explicit subscribe, add it there.
    To learn the exact handshake, connect straight to the console and watch whether
    desk-side changes arrive as `NOTIFY` (set `DEBUG = true`); if not, Wireshark a
@@ -173,7 +173,7 @@ to prime values from the console (it sends a `get` for every modeled parameter).
 > `try/catch`, regex literals, the `delete` operator, and globals such as
 > `isNaN`, `String()`, and `Math` (use `"" + x` to stringify and plain
 > arithmetic/`parseInt` instead). Also: multi-file `scripts` do NOT share
-> scope (keep everything in `moduleScript.js`); `local.send()` does not append
+> scope (keep everything in `Yam-RCP.js`); `local.send()` does not append
 > the line delimiter (we add `"\n"`); and `getChild()` logs a warning for a
 > missing child, so only call it for children you know exist.
 >

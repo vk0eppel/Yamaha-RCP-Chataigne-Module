@@ -1,6 +1,8 @@
 /*
  * Yamaha RCP - Chataigne custom module.
  *
+ * @author Victor Koeppel
+ * 
  * SINGLE FILE ON PURPOSE. Chataigne loads each entry in module.json "scripts"
  * in its own isolated scope, so helpers in separate files are NOT visible here.
  * Everything the module needs lives in this one file.

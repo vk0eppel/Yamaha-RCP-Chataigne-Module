@@ -1,23 +1,23 @@
 /*
  * Plain-Node unit tests for the RCP protocol helpers.
  *
- * The module ships as a single moduleScript.js (Chataigne loads each script in
+ * The module ships as a single Yam-RCP.js (Chataigne loads each script in
  * its own scope, so no separate lib file). To avoid a drifting copy, this test
  * extracts the code between the RCP-PROTOCOL-START / RCP-PROTOCOL-END markers in
- * moduleScript.js and evaluates it here, so we test exactly what ships.
+ * Yam-RCP.js and evaluates it here, so we test exactly what ships.
  *
  * Run: node test/rcp.test.js
  */
 var fs = require("fs");
 var path = require("path");
 
-var src = fs.readFileSync(path.join(__dirname, "..", "moduleScript.js"), "utf8");
+var src = fs.readFileSync(path.join(__dirname, "..", "Yam-RCP.js"), "utf8");
 var startMark = "RCP-PROTOCOL-START";
 var endMark = "RCP-PROTOCOL-END";
 var s = src.indexOf(startMark);
 var e = src.indexOf(endMark);
 if (s < 0 || e < 0) {
-  console.error("FAIL: could not find protocol markers in moduleScript.js");
+  console.error("FAIL: could not find protocol markers in Yam-RCP.js");
   process.exit(1);
 }
 // Start just after the START marker line; end at the END marker.
