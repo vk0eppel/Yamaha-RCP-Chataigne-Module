@@ -108,12 +108,19 @@ Run the fake console and point the module's remote host at `127.0.0.1`:
 
 ```
 node test/mock-console.js            # RCP on tcp/49280, control UI on :8080
+MOCK_MODEL=DM7 node test/mock-console.js   # report a specific model (default CL5)
 ```
 
 The mock is a two-way test rig:
 
 - It serves RCP (`get`/`set` → `OK`/`OKm`, `NOTIFY`) so you can watch the exact lines
   the module emits.
+- It answers the identity/session verbs a real desk does — `devinfo productname`
+  (driven by `MOCK_MODEL`), `devinfo deviceid`/`devicename`/`serialno`/`version`,
+  `devstatus runmode`, and `scpmode keepalive` — so RCP controllers (Companion, QLab,
+  this module) recognise it as hardware and keep the connection open. It still does
+  **not** emulate Yamaha's own apps (StageMix, Editor); those use the proprietary
+  protocols noted below, not RCP.
 - It lets you **simulate desk-side changes** — as if someone touched the console — which
   are pushed to the module as `NOTIFY`. Two ways:
   - **Web UI** at <http://localhost:8080>: move a fader / toggle On / edit Name / pick a

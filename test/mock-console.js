@@ -2,15 +2,22 @@
  * Mock Yamaha console for offline testing (no desk, no dependencies).
  *
  *   node test/mock-console.js [rcpPort] [httpPort]   (defaults 49280 / 8080)
+ *   MOCK_MODEL=DM7 node test/mock-console.js         (model it reports; default CL5)
  *
  * Why: the real CL/QL Editor cannot stand in for a console here - it speaks
  * Yamaha's proprietary editor protocol on port 50000, NOT RCP on 49280. So to
  * test the Chataigne module's two-way sync without hardware, this mock:
  *
  *   - serves RCP over TCP (get/set, OK/OKm/NOTIFY/ERROR), and
+ *   - answers the identity/session verbs a real desk does (devinfo, devstatus,
+ *     scpmode) so RCP controllers (Companion, QLab, this module) recognise it as
+ *     hardware and hold the connection open, and
  *   - lets you inject "desk-side" changes (as if someone touched the console)
  *     that get pushed to the connected module as NOTIFY - via a tiny web UI
  *     at http://localhost:8080 or a stdin REPL.
+ *
+ * This still does NOT emulate Yamaha's own apps (StageMix, CL/QL Editor,
+ * ProVisionaire) - those use undocumented proprietary protocols, not RCP.
  *
  * Realistic console behaviour: a `set` from a client gets an `OK` back, and a
  * `NOTIFY` is sent to the OTHER clients (a desk does not notify the connection
@@ -27,6 +34,18 @@ var RCP_PORT = parseInt(process.argv[2], 10) || 49280;
 var HTTP_PORT = parseInt(process.argv[3], 10) || 8080;
 var UI_CHANNELS = 8;           // channels shown in the web UI
 var NOTIFY_SENDER = false;     // true = also NOTIFY the client that sent the set
+
+// Which console this mock pretends to be, reported via `devinfo productname` so
+// RCP controllers (Companion, QLab, this Chataigne module) identify it as real
+// hardware. Set with MOCK_MODEL (default CL5); keys mirror Yam-RCP.js MODEL_TABLE.
+// Rivage productname is a placeholder - confirm the exact string on a real desk.
+var PRODUCTNAME = {
+  CL1: "CL1", CL3: "CL3", CL5: "CL5", QL1: "QL1", QL5: "QL5",
+  DM3: "DM3", DM7: "DM7", DM7C: "DM7",
+  RX: "RIVAGE PM", RXEX: "RIVAGE PM", R10: "RIVAGE PM", PM7: "RIVAGE PM"
+};
+var MODEL = (process.env.MOCK_MODEL || "CL5").toUpperCase();
+if (!PRODUCTNAME.hasOwnProperty(MODEL)) MODEL = "CL5";
 
 var MINUS_INF = -32768;        // raw fader value meaning -inf
 var COLORS = ["Blue", "Orange", "Yellow", "Purple", "Cyan", "Magenta", "Red", "Green", "LtGreen", "White", "Off"];
@@ -125,7 +144,29 @@ function handleLine(sock, line) {
     broadcast("NOTIFY set " + addr + " " + x + " " + y + " " + val, NOTIFY_SENDER ? null : sock);
     return;
   }
+  // Identity / session verbs a real desk answers - lets RCP controllers detect
+  // the model and hold the connection open. addr is the sub-command here.
+  if (cmd === "devinfo") { handleDevinfo(sock, addr); return; }
+  if (cmd === "devstatus" && addr === "runmode") { okQuoted(sock, "devstatus runmode", "normal"); return; }
+  if (cmd === "scpmode" && addr) { reply(sock, "OK scpmode " + addr + " " + (x == null ? "" : x)); return; }
+
   reply(sock, "ERROR " + line);
+}
+
+// Answer `devinfo <sub>`. productname is what a controller uses to recognise the
+// model; the rest are plausible constants. Unknown sub -> ERROR (as real desks do).
+function handleDevinfo(sock, sub) {
+  if (sub === "productname") return okQuoted(sock, "devinfo productname", PRODUCTNAME[MODEL]);
+  if (sub === "devicename")  return okQuoted(sock, "devinfo devicename", "MockConsole");
+  if (sub === "deviceid")    return okQuoted(sock, "devinfo deviceid", "MOCK-" + MODEL);
+  if (sub === "serialno")    return okQuoted(sock, "devinfo serialno", "0000000000");
+  if (sub === "version")     return okQuoted(sock, "devinfo version", "0.00");
+  reply(sock, "ERROR devinfo " + (sub == null ? "" : sub));
+}
+
+// Emit `OK <verb> "<value>"` (quoted string reply), the shape real desks use.
+function okQuoted(sock, verb, value) {
+  reply(sock, "OK " + verb + ' "' + value + '"');
 }
 
 function reply(sock, line) {
@@ -299,7 +340,8 @@ function printHelp() {
 // ---- start ---------------------------------------------------------------
 
 tcpServer.listen(RCP_PORT, function () {
-  console.log("mock Yamaha console (RCP) listening on tcp/" + RCP_PORT);
+  console.log("mock Yamaha console (RCP) listening on tcp/" + RCP_PORT +
+              "  model=" + MODEL + " (productname \"" + PRODUCTNAME[MODEL] + "\")");
 });
 httpServer.listen(HTTP_PORT, function () {
   console.log("control UI: http://localhost:" + HTTP_PORT + "   (" + UI_CHANNELS + " channels)");

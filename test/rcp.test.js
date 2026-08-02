@@ -62,6 +62,10 @@ eq(parseLine('NOTIFY set MIXER:Current/InCh/Label/Name 15 0 "Kick In"'),
    { status: "NOTIFY", action: "set", address: "MIXER:Current/InCh/Label/Name", x: 15, y: 0, isString: true, raw: 'NOTIFY set MIXER:Current/InCh/Label/Name 15 0 "Kick In"', val: "Kick In" },
    "parse quoted string notify with space");
 eq(parseLine('OKm get MIXER:Current/InCh/Label/Color 2 0 "Blue"').val, "Blue", "parse OKm color value");
+eq(parseLine('OK devinfo productname "CL5"'),
+   { status: "OK", action: "devinfo", sub: "productname", val: "CL5", isString: true, raw: 'OK devinfo productname "CL5"' },
+   "parse devinfo productname reply");
+eq(parseLine('OK devstatus runmode "normal"').val, "normal", "parse devstatus runmode value");
 eq(parseLine("random noise"), null, "non-reply -> null");
 eq(parseLine(""), null, "empty -> null");
 eq(parseLine("ERROR set Foo 0 0 0").status, "ERROR", "error status recognized");

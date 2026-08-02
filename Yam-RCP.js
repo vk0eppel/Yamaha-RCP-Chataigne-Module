@@ -160,6 +160,15 @@ var MODEL_TABLE = {
   RX: "rivage", RXEX: "rivage", R10: "rivage", PM7: "rivage"
 };
 
+// Expected `devinfo productname` string per model, used only to warn when the
+// selected Console Model doesn't match the connected desk. Confident entries
+// only: DM7 Compact's and the Rivage engines' exact product names aren't
+// confirmed, so they're omitted (no entry = no mismatch check, no false alarm).
+var EXPECTED_PRODUCT = {
+  CL1: "CL1", CL3: "CL3", CL5: "CL5", QL1: "QL1", QL5: "QL5",
+  DM3: "DM3", DM7: "DM7"
+};
+
 // =========================================================================
 // RCP-PROTOCOL-START
 // Pure helpers (no Chataigne API). Unit-tested by test/rcp.test.js, which
@@ -267,8 +276,16 @@ function parseLine(line) {
     return { status: status, action: null, address: null, x: 0, y: 0, val: null, isString: false, raw: line };
   }
 
-  if (tokens.length < 6) return null;
   var action = tokens[1].value;
+  // Identity replies (`OK devinfo productname "CL5"`, `OK devstatus runmode
+  // "normal"`) have no address/x/y - they carry a sub-command and one value.
+  if (action === "devinfo" || action === "devstatus") {
+    if (tokens.length < 4) return null;
+    var dlast = tokens[tokens.length - 1];
+    return { status: status, action: action, sub: tokens[2].value, val: dlast.value, isString: dlast.quoted, raw: line };
+  }
+
+  if (tokens.length < 6) return null;
   var address = tokens[2].value;
   var x = parseInt(tokens[3].value, 10);
   var y = parseInt(tokens[4].value, 10);
@@ -298,6 +315,8 @@ var built = false;         // group containers created yet?
 var builtTableKey = null;  // which table (family) the tree was built for
 var groupContainers = {};  // groupKey -> Chataigne container
 var groupCounts = {};      // groupKey -> channels currently in the tree
+var deviceCont = null;     // "Device" container: identity read from devinfo
+var deviceParamBySub = {}; // "productname"|"deviceid"|"version" -> feedback param
 
 // ---- lifecycle -----------------------------------------------------------
 
@@ -336,6 +355,16 @@ function buildValues() {
   if (!built) {
     valueByAddrX = {};
     revByKey = {};
+    // Device identity (top of the tree): read-only-by-convention values filled
+    // from the desk's `devinfo` replies during syncAll(). Not in revByKey, so
+    // edits to them are never echoed back out.
+    deviceCont = local.values.addContainer("Device");
+    deviceCont.setCollapsed(true);
+    deviceParamBySub = {
+      productname: deviceCont.addStringParameter("Product Name", "Model the console reports (devinfo productname)", ""),
+      deviceid:    deviceCont.addStringParameter("Device ID", "Device ID the console reports (devinfo deviceid)", ""),
+      version:     deviceCont.addStringParameter("Firmware Version", "Firmware the console reports (devinfo version)", "")
+    };
     for (var gi = 0; gi < groups.length; gi++) {
       var gCont = local.values.addContainer(groups[gi].label);
       gCont.setCollapsed(true); // groups collapsed by default (tidy tree)
@@ -365,9 +394,12 @@ function teardownTree() {
   }
   var scene = local.values.getChild("Scene");
   if (scene != undefined) local.values.removeContainer(scene);
+  if (deviceCont != undefined) local.values.removeContainer(deviceCont);
   built = false;
   groupContainers = {};
   groupCounts = {};
+  deviceCont = null;
+  deviceParamBySub = {};
   valueByAddrX = {};
   revByKey = {};
 }
@@ -430,6 +462,10 @@ function sendLine(line) {
 // Prime all modeled values and (re)establish notifications.
 function syncAll() {
   subscribeAll();
+  // Ask the desk who it is (fills the Device container + mismatch warning).
+  sendLine("devinfo productname");
+  sendLine("devinfo deviceid");
+  sendLine("devinfo version");
   var groups = currentTable.groups;
   for (var gi = 0; gi < groups.length; gi++) {
     var g = groups[gi];
@@ -529,7 +565,30 @@ function dataReceived(data) {
     script.logWarning("Yamaha RCP error: " + msg.raw);
     return;
   }
+  if (msg.action == "devinfo" || msg.action == "devstatus") {
+    applyDevinfo(msg);
+    return;
+  }
   applyIncoming(msg);
+}
+
+// Fill the Device container from a `devinfo` reply, and warn if the reported
+// product name doesn't match the selected Console Model. `devstatus` is ignored.
+function applyDevinfo(msg) {
+  if (msg.action != "devinfo") return;
+  var param = deviceParamBySub[msg.sub];
+  if (param != undefined) setGuarded(param, msg.val);
+  if (msg.sub == "productname") checkModelMatch(msg.val);
+}
+
+function checkModelMatch(reported) {
+  var modelKey = readModuleParam("consoleModel", "CL5");
+  var expected = EXPECTED_PRODUCT[modelKey];
+  if (expected == undefined) return; // unconfirmed product name (DM7C/Rivage) - skip
+  if (("" + reported).toUpperCase() != expected.toUpperCase()) {
+    script.logWarning("Yamaha RCP: console reports '" + reported + "' but Console Model is set to " +
+                      modelKey + " (expected '" + expected + "') - check the model selector");
+  }
 }
 
 function applyIncoming(msg) {
