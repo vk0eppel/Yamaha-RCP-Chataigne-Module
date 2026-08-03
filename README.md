@@ -159,7 +159,10 @@ tree** as RCP, so the specs authoritatively confirm, for those models:
 - **Addresses** — `Fader/Level`, `Fader/On`, `Label/Name`, `Label/Color`; mute is
   `MuteMaster/On` (CL/QL & Rivage) vs `MuteGrpCtrl/On` (DM).
 - **Fader scaling** — integer, ×100, `-32768` = −∞, max `1000` (+10 dB).
-- **Channel counts** — DM3, DM7/DM7 Compact, and all four Rivage DSP engines.
+- **Channel counts** — DM3, DM7/DM7 Compact, and all four Rivage DSP engines. The Rivage
+  engine capacities are additionally confirmed against Yamaha's official Rivage PM specs
+  (RX 120/48/24, RX-EX 288/72/36, PM7-internal 144/60/36). Note `St: 4` = **2 stereo buses**
+  (a bus is L+R, and `St` counts RCP channels) — not a discrepancy.
 - **Scene recall** — DM3 `ssrecall_ex scene_a <0-99>`, DM7 `ssrecallt_ex scene_a
   "N.MM"` (1.00–499.99), Rivage `ssrecallt_ex MIXER:Lib/Scene "N.MM"`. The **Rivage**
   form is additionally **confirmed on real hardware** (DSP-RX-EX capture) — see

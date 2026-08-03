@@ -107,6 +107,9 @@ var DM3_MODELS = {
 // Rivage capacity is set by the DSP engine, not the control surface, so the
 // models are named by engine. PM3/PM5 run DSP-RX or DSP-RX-EX; PM10 runs DSP-R10;
 // PM7 has its own integrated DSP (CSD-R7). St/DCA/Mute are constant per the table.
+// Yamaha-spec-confirmed capacities: RX 120/48/24, RX-EX 288/72/36, PM7-internal
+// 144/60/36. NB `St` counts RCP *channels*: a stereo bus is L+R, so Yamaha's "2
+// stereo buses" == St: 4 - do NOT "correct" this to 2.
 var RIVAGE_MODELS = {
   RX:   { InCh: 120, Mix: 48, Mtrx: 24, St: 4, DCA: 24, MuteMaster: 12 },
   RXEX: { InCh: 288, Mix: 72, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 },
