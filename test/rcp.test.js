@@ -66,6 +66,14 @@ eq(parseLine('OK devinfo productname "CL5"'),
    { status: "OK", action: "devinfo", sub: "productname", val: "CL5", isString: true, raw: 'OK devinfo productname "CL5"' },
    "parse devinfo productname reply");
 eq(parseLine('OK devstatus runmode "normal"').val, "normal", "parse devstatus runmode value");
+
+// scene feedback
+eq(parseLine('NOTIFY ssrecallt_ex MIXER:Lib/Scene "8.00"'),
+   { status: "NOTIFY", action: "ssrecallt_ex", target: "MIXER:Lib/Scene", val: "8.00", isString: true, raw: 'NOTIFY ssrecallt_ex MIXER:Lib/Scene "8.00"' },
+   "parse Rivage scene recall notify");
+eq(parseLine('NOTIFY sscurrentt_ex MIXER:Lib/Scene "9.00"').val, "9.00", "parse current-scene value");
+eq(parseLine("NOTIFY ssrecall_ex MIXER:Lib/Scene 5").val, "5", "parse CL/QL integer scene recall");
+eq(parseLine("NOTIFY ssrecall_ex MIXER:Lib/Scene 5").isString, false, "integer scene is not a string");
 eq(parseLine("random noise"), null, "non-reply -> null");
 eq(parseLine(""), null, "empty -> null");
 eq(parseLine("ERROR set Foo 0 0 0").status, "ERROR", "error status recognized");

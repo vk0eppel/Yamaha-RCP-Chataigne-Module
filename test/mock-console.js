@@ -55,7 +55,17 @@ var A_LEVEL = "MIXER:Current/InCh/Fader/Level";
 var A_ON = "MIXER:Current/InCh/Fader/On";
 var A_NAME = "MIXER:Current/InCh/Label/Name";
 var A_COLOR = "MIXER:Current/InCh/Label/Color";
-var A_SCENE = "MIXER:Lib/Scene/Recall";
+
+// Scene style per model: DM7 & Rivage use the string "N.MM" (ssrecallt_ex) form;
+// CL/QL & DM3 use the integer (ssrecall_ex) form. See docs/rivage-scene-protocol.md.
+var SCENE_TEXT = { DM7: 1, DM7C: 1, RX: 1, RXEX: 1, R10: 1, PM7: 1 };
+var currentScene = 0; // integer scene index the mock currently holds
+function sceneTextForm() { return SCENE_TEXT.hasOwnProperty(MODEL); }
+function recallVerb()  { return sceneTextForm() ? "ssrecallt_ex"  : "ssrecall_ex";  }
+function currentVerb() { return sceneTextForm() ? "sscurrentt_ex" : "sscurrent_ex"; }
+function sceneVal(n)   { return sceneTextForm() ? ('"' + n + '.00"') : ("" + n); }
+function sceneIndexOf(tok) { var f = parseFloat(stripQuotes(tok)); return isNaN(f) ? currentScene : Math.floor(f); }
+function broadcastCurrent(except) { broadcast("NOTIFY " + currentVerb() + " MIXER:Lib/Scene " + sceneVal(currentScene), except); }
 
 // ---- state store ---------------------------------------------------------
 
@@ -151,6 +161,18 @@ function handleLine(sock, line) {
   if (cmd === "devstatus" && addr === "runmode") { okQuoted(sock, "devstatus runmode", "normal"); return; }
   if (cmd === "scpmode" && addr) { reply(sock, "OK scpmode " + addr + " " + (x == null ? "" : x)); return; }
 
+  // Scene recall / inc / dec: mirror a real desk - OK to the sender, then a current-
+  // scene NOTIFY to the OTHER clients. Lets the module's Scene/Current be tested.
+  // t = [verb, target, value] for recall; [event, address, (bank)] for inc/dec.
+  if (cmd === "ssrecall_ex" || cmd === "ssrecallt_ex") {
+    currentScene = sceneIndexOf(t[2]);
+    reply(sock, "OK " + line);
+    broadcastCurrent(NOTIFY_SENDER ? null : sock);
+    return;
+  }
+  if (cmd === "event" && addr === "MIXER:Lib/Scene/RecallInc") { currentScene++; reply(sock, "OK " + line); broadcastCurrent(null); return; }
+  if (cmd === "event" && addr === "MIXER:Lib/Scene/RecallDec") { if (currentScene > 0) currentScene--; reply(sock, "OK " + line); broadcastCurrent(null); return; }
+
   reply(sock, "ERROR " + line);
 }
 
@@ -203,7 +225,11 @@ function injectFader(ch, db) { applyChange(A_LEVEL, ch - 1, 0, "" + dbToRaw(db),
 function injectOn(ch, on) { applyChange(A_ON, ch - 1, 0, on ? "1" : "0", null); }
 function injectName(ch, name) { applyChange(A_NAME, ch - 1, 0, '"' + name + '"', null); }
 function injectColor(ch, color) { applyChange(A_COLOR, ch - 1, 0, '"' + color + '"', null); }
-function injectScene(n) { applyChange(A_SCENE, 0, 0, "" + n, null); }
+function injectScene(n) {
+  currentScene = n;
+  broadcast("NOTIFY " + recallVerb() + " MIXER:Lib/Scene " + sceneVal(n), null); // a scene was recalled
+  broadcastCurrent(null);                                                        // ...and is now current
+}
 
 // ---- HTTP control UI -----------------------------------------------------
 

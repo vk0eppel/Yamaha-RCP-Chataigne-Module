@@ -92,7 +92,10 @@ every model — an unsupported group/channel is simply ignored) and a 1-based ch
 | Sync Now | request all current values from the console |
 
 Feedback appears under **Values → `<group>` → NN** (e.g. `Input Channels → 01`,
-`Mix → 03`, `DCA → 02`) with Level / On / Name / Color.
+`Mix → 03`, `DCA → 02`) with Level / On / Name / Color. **Values → Scene → Current**
+reflects the desk's current scene (from `ssrecall`/`sscurrent` notifications — a string,
+so `"8"` on CL/QL and `"8.00"` on DM7/Rivage); **Values → Device** shows the model the
+console reports. (Scene *name* and inc/dec confirmation are still open — see below.)
 
 ## Offline testing (no console)
 
@@ -158,7 +161,11 @@ tree** as RCP, so the specs authoritatively confirm, for those models:
 - **Fader scaling** — integer, ×100, `-32768` = −∞, max `1000` (+10 dB).
 - **Channel counts** — DM3, DM7/DM7 Compact, and all four Rivage DSP engines.
 - **Scene recall** — DM3 `ssrecall_ex scene_a <0-99>`, DM7 `ssrecallt_ex scene_a
-  "N.MM"` (1.00–499.99), Rivage `ssrecallt_ex MIXER:Lib/Scene "N.MM"`.
+  "N.MM"` (1.00–499.99), Rivage `ssrecallt_ex MIXER:Lib/Scene "N.MM"`. The **Rivage**
+  form is additionally **confirmed on real hardware** (DSP-RX-EX capture) — see
+  [`docs/rivage-scene-protocol.md`](docs/rivage-scene-protocol.md), which also documents
+  the scene *feedback* verbs (`sscurrentt_ex`, `ssupdatet_ex`, `ssinfot_ex`) not yet used
+  by the module.
 - **DM7 scene inc/dec** — `event MIXER:Lib/Scene/RecallInc scene_a` (with bank suffix).
 - **Colour palettes** — confirmed on the DM7 / DM3 / Rivage editors (see the palettes
   above; DM7 and Rivage share the same 11-colour set, DM3 uses the CL/QL 8-colour set).
@@ -173,14 +180,18 @@ These are isolated in the code so they're one-line fixes:
    open RCP session (so `subscribeAll()` in `Yam-RCP.js` is empty and we only
    prime state with `get`). The OSC specs don't help here — OSC is a separate
    transport and says nothing about RCP's push behaviour. If your desk needs an
-   explicit subscribe, add it there. To learn the exact handshake, connect straight to
-   the console and watch whether desk-side changes arrive as `NOTIFY` (set `DEBUG =
-   true`); if not, Wireshark a known-good RCP client such as Bitfocus Companion talking
-   to the console on port 49280. (Note: the CL/QL *Editor* won't help — it uses the
-   editor protocol on port 50000, not RCP.)
+   explicit subscribe, add it there. **Corroborated** by the Bitfocus Companion module,
+   which likewise sends **no** subscribe command and just listens for `NOTIFY` — so an
+   empty subscribe is expected to be correct; a hardware check would make it certain. To
+   verify, connect straight to the console and watch whether desk-side changes arrive as
+   `NOTIFY` (set `DEBUG = true`); if not, Wireshark Companion talking to the console on
+   port 49280. (Note: the CL/QL *Editor* won't help — it uses the editor protocol on port
+   50000, not RCP.)
 2. **Scene inc/dec for DM3 & Rivage.** Neither the DM3 nor the Rivage OSC spec documents
    scene inc/dec (only DM7 does). The module still sends `event MIXER:Lib/Scene/RecallInc`
    / `RecallDec` for them (no bank suffix), which may or may not work — confirm on a desk.
+   (Rivage scene *recall* is now hardware-confirmed — see the scene-recall bullet above —
+   but this inc/dec path is still unverified.)
 3. **CL/QL.** No Yamaha OSC spec was available for CL/QL, so its addresses, scene verbs
    (`ssrecall_ex MIXER:Lib/Scene <n>`), and 9-colour palette remain sourced from the
    Bitfocus Companion module rather than a first-party spec.
@@ -197,6 +208,11 @@ These are isolated in the code so they're one-line fixes:
    `serialno`, and `version` — the module displays them; the mock returns constants.
 7. **CL1 input count = 48 (low risk).** Corrected from Yamaha's Script Template
    `command_list.pdf` (CL1 range `0–47`); confident but not yet confirmed on a CL1.
+8. **Scene re-sync on recall.** On a `sscurrent*` NOTIFY the module now re-`get`s the whole
+   tree (a scene changes many values at once — mirrors Companion). Two assumptions to
+   confirm on a desk: (a) whether the console withholds `sscurrent` from the client that
+   *recalled* (if so, our own **Recall Scene** won't auto-refresh — a follow-up), and
+   (b) whether `get`s issued right after a recall read settled (not mid-fade) values.
 
 _See also_ [`docs/yamaha-editor-protocol.md`](docs/yamaha-editor-protocol.md) for the
 Editor's discovery/control protocol — reconnaissance only, intentionally **not**

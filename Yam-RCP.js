@@ -261,6 +261,15 @@ function tokenize(line) {
   return tokens;
 }
 
+// True for scene recall/current verbs (`ssrecall_ex`, `ssrecallt_ex`, `sscurrent_ex`,
+// `sscurrentt_ex`). Both the *_ex integer and *t_ex string families are covered.
+// TODO(hw): Rivage *t_ex is hardware-confirmed, and sscurrent_ex/sscurrentt_ex are also
+// corroborated by the Bitfocus Companion module (it keys scene feedback on those). The
+// ssrecall_ex feedback verb stays assumed - see README "Still to confirm on real hardware".
+function isSceneVerb(action) {
+  return action != null && (action.indexOf("ssrecall") === 0 || action.indexOf("sscurrent") === 0);
+}
+
 // Parse one reply line into { status, action, address, x, y, val, isString, raw }
 // or null if it isn't a value-bearing reply we understand.
 function parseLine(line) {
@@ -284,6 +293,15 @@ function parseLine(line) {
     if (tokens.length < 4) return null;
     var dlast = tokens[tokens.length - 1];
     return { status: status, action: action, sub: tokens[2].value, val: dlast.value, isString: dlast.quoted, raw: line };
+  }
+
+  // Scene feedback (`NOTIFY ssrecallt_ex MIXER:Lib/Scene "8.00"`, `sscurrentt_ex ...`,
+  // and the CL/QL integer `ssrecall_ex ... 5`). Verb + target + one scene value at
+  // tokens[3]; no address/x/y. Covers both the *_ex and *t_ex families.
+  if (isSceneVerb(action)) {
+    if (tokens.length < 4) return null;
+    var sv = tokens[3];
+    return { status: status, action: action, target: tokens[2].value, val: sv.value, isString: sv.quoted, raw: line };
   }
 
   if (tokens.length < 6) return null;
@@ -318,6 +336,7 @@ var groupContainers = {};  // groupKey -> Chataigne container
 var groupCounts = {};      // groupKey -> channels currently in the tree
 var deviceCont = null;     // "Device" container: identity read from devinfo
 var deviceParamBySub = {}; // "productname"|"deviceid"|"version" -> feedback param
+var sceneCurrentParam = null; // "Scene/Current" feedback param (current scene string)
 
 // ---- lifecycle -----------------------------------------------------------
 
@@ -373,7 +392,9 @@ function buildValues() {
       groupCounts[groups[gi].key] = 0;
     }
     var scene = local.values.addContainer("Scene");
-    scene.addIntParameter("Current", "Last recalled scene", 0, 0, 300);
+    // Feedback-only (not in revByKey, so edits are never echoed out). String holds
+    // both CL/QL integers ("8") and DM7/Rivage "N.MM" ("8.00").
+    sceneCurrentParam = scene.addStringParameter("Current", "Current scene reported by the console", "");
     built = true;
   }
 
@@ -401,6 +422,7 @@ function teardownTree() {
   groupCounts = {};
   deviceCont = null;
   deviceParamBySub = {};
+  sceneCurrentParam = null;
   valueByAddrX = {};
   revByKey = {};
 }
@@ -467,6 +489,12 @@ function syncAll() {
   sendLine("devinfo productname");
   sendLine("devinfo deviceid");
   sendLine("devinfo version");
+  getAllValues();
+}
+
+// Re-get every modeled value (no identity query). Used by the initial sync and to
+// refresh the tree after a desk-side scene change, which alters many values at once.
+function getAllValues() {
   var groups = currentTable.groups;
   for (var gi = 0; gi < groups.length; gi++) {
     var g = groups[gi];
@@ -571,7 +599,29 @@ function dataReceived(data) {
     applyDevinfo(msg);
     return;
   }
+  if (isSceneVerb(msg.action)) {
+    applyScene(msg);
+    return;
+  }
   applyIncoming(msg);
+}
+
+// Reflect the console's current scene into Scene/Current (display-only). Fires on
+// recall/current NOTIFY and on the OK reply to our own recall - both are harmless.
+function applyScene(msg) {
+  if (sceneCurrentParam == undefined) return;
+  setGuarded(sceneCurrentParam, "" + msg.val);
+  // A scene recall changes many parameters at once. When the desk reports the new
+  // current scene (sscurrent* NOTIFY), re-read the tree so channel values don't go
+  // stale - mirrors the Bitfocus Companion re-poll behaviour. The get replies route
+  // to applyIncoming, not back here, so there's no loop.
+  // TODO(hw): the desk is assumed not to send sscurrent to the client that recalled,
+  // so our own Recall Scene won't auto-refresh; and gets issued right after a recall
+  // are assumed to read post-recall (not mid-fade) values - see README "Still to
+  // confirm on real hardware".
+  if (msg.status == "NOTIFY" && ("" + msg.action).indexOf("sscurrent") === 0) {
+    getAllValues();
+  }
 }
 
 // Fill the Device container from a `devinfo` reply, and warn if the reported
