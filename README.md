@@ -138,11 +138,14 @@ echo-to-sender behaviour.
 To see line-by-line traffic inside Chataigne, set `DEBUG = true` at the top of
 `Yam-RCP.js`.
 
-> Note: the real Yamaha **CL/QL Editor cannot be used as a test target** — it speaks
-> Yamaha's proprietary editor protocol on TCP **50000**, not RCP on 49280. RCP is served
-> by the *console*; the Editor is just another client of it. To test against real
-> hardware, point the module at the **console's** IP (the same one the Editor connects
-> to when online).
+> Note: the real Yamaha **Editor cannot be used as a test target** — it speaks
+> Yamaha's proprietary editor protocol on TCP **50000**, not RCP on 49280, and finds
+> consoles via its own UDP discovery. RCP is served by the *console*; the Editor is just
+> another client of it. To test against real hardware, point the module at the
+> **console's** IP (the same one the Editor connects to when online). See
+> [`docs/yamaha-editor-protocol.md`](docs/yamaha-editor-protocol.md) for reconnaissance
+> notes on the Editor's discovery (LNK multicast / SDP broadcast) and why the mock
+> deliberately doesn't emulate it.
 
 ## Verified against the official OSC specs
 
