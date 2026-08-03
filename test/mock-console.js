@@ -39,6 +39,7 @@ var NOTIFY_SENDER = false;     // true = also NOTIFY the client that sent the se
 // RCP controllers (Companion, QLab, this Chataigne module) identify it as real
 // hardware. Set with MOCK_MODEL (default CL5); keys mirror Yam-RCP.js MODEL_TABLE.
 // Rivage productname is a placeholder - confirm the exact string on a real desk.
+// TODO(hw): confirm DM7C/Rivage strings on a real desk - see README "Still to confirm on real hardware" (#5)
 var PRODUCTNAME = {
   CL1: "CL1", CL3: "CL3", CL5: "CL5", QL1: "QL1", QL5: "QL5",
   DM3: "DM3", DM7: "DM7", DM7C: "DM7",

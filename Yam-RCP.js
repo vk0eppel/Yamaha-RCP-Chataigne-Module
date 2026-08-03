@@ -164,6 +164,7 @@ var MODEL_TABLE = {
 // selected Console Model doesn't match the connected desk. Confident entries
 // only: DM7 Compact's and the Rivage engines' exact product names aren't
 // confirmed, so they're omitted (no entry = no mismatch check, no false alarm).
+// TODO(hw): confirm strings on a real desk - see README "Still to confirm on real hardware" (#4, #5)
 var EXPECTED_PRODUCT = {
   CL1: "CL1", CL3: "CL3", CL5: "CL5", QL1: "QL1", QL5: "QL5",
   DM3: "DM3", DM7: "DM7"
@@ -481,6 +482,7 @@ function syncAll() {
  * open RCP session, so no explicit subscribe line is sent (the get()s in
  * syncAll prime initial state). If your desk needs an explicit subscribe, add
  * it here - this is the single place to change.
+ * TODO(hw): confirm on a real desk - see README "Still to confirm on real hardware" (#1)
  */
 function subscribeAll() {
   // intentionally empty for the auto-notify assumption

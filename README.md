@@ -184,6 +184,23 @@ These are isolated in the code so they're one-line fixes:
 3. **CL/QL.** No Yamaha OSC spec was available for CL/QL, so its addresses, scene verbs
    (`ssrecall_ex MIXER:Lib/Scene <n>`), and 9-colour palette remain sourced from the
    Bitfocus Companion module rather than a first-party spec.
+4. **`devinfo productname` wire format.** The **Device** container and the model-mismatch
+   warning depend on the exact reply shape — `OK devinfo productname "CL5"` (prefix `OK`,
+   verb echoed, value quoted). Capture a real desk's reply and confirm it matches
+   `parseLine()` in `Yam-RCP.js` and the mock's `okQuoted()`.
+5. **DM7C & Rivage product-name strings.** `PRODUCTNAME` in `test/mock-console.js` uses
+   placeholders (`DM7C → "DM7"`, all Rivage engines → `"RIVAGE PM"`), and
+   `EXPECTED_PRODUCT` in `Yam-RCP.js` deliberately **omits** DM7C/Rivage so no mismatch
+   warning fires for them. Once seen on a desk, set the real strings and add the
+   `EXPECTED_PRODUCT` entries.
+6. **Other `devinfo` subcommands (low priority).** Whether real desks answer `deviceid`,
+   `serialno`, and `version` — the module displays them; the mock returns constants.
+7. **CL1 input count = 48 (low risk).** Corrected from Yamaha's Script Template
+   `command_list.pdf` (CL1 range `0–47`); confident but not yet confirmed on a CL1.
+
+_See also_ [`docs/yamaha-editor-protocol.md`](docs/yamaha-editor-protocol.md) for the
+Editor's discovery/control protocol — reconnaissance only, intentionally **not**
+implemented, so not a module verification item.
 
 There is no scriptable connection-status flag exposed to modules, so the module
 does not auto-sync on connect. **After connecting, run the `Sync Now` command**
