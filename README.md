@@ -142,8 +142,8 @@ To see line-by-line traffic inside Chataigne, set `DEBUG = true` at the top of
 `Yam-RCP.js`.
 
 > Note: the real Yamaha **Editor cannot be used as a test target** — it speaks
-> Yamaha's proprietary editor protocol on TCP **50000**, not RCP on 49280, and finds
-> consoles via its own UDP discovery. RCP is served by the *console*; the Editor is just
+> Yamaha's proprietary editor protocol on TCP **50368** (`MPRO`/`EEVT` framing), not RCP on
+> 49280, and finds consoles via its own UDP discovery. RCP is served by the *console*; the Editor is just
 > another client of it. To test against real hardware, point the module at the
 > **console's** IP (the same one the Editor connects to when online). See
 > [`docs/yamaha-editor-protocol.md`](docs/yamaha-editor-protocol.md) for reconnaissance
@@ -185,11 +185,16 @@ These are isolated in the code so they're one-line fixes:
    transport and says nothing about RCP's push behaviour. If your desk needs an
    explicit subscribe, add it there. **Corroborated** by the Bitfocus Companion module,
    which likewise sends **no** subscribe command and just listens for `NOTIFY` — so an
-   empty subscribe is expected to be correct; a hardware check would make it certain. To
-   verify, connect straight to the console and watch whether desk-side changes arrive as
+   empty subscribe is expected to be correct. **Firmware-confirmed (DM7 V1.75):** the RCP
+   server's command-dispatch classes contain **no `SUBSCRIBE`** verb (unlike its YOSC/OSC
+   server, which does), and it exposes first-class push classes `ScpClientNotificationSET`/
+   `…SETN` — so the desk pushes `NOTIFY set …` with no subscribe step. What the binary can't
+   settle is *whether the originator also receives its own NOTIFY* (see item 8). To
+   verify on the wire, connect straight to the console and watch whether desk-side changes arrive as
    `NOTIFY` (set `DEBUG = true`); if not, Wireshark Companion talking to the console on
-   port 49280. (Note: the CL/QL *Editor* won't help — it uses the editor protocol on port
-   50000, not RCP.)
+   port 49280. (Note: the CL/QL *Editor* won't help — it speaks Yamaha's proprietary editor
+   protocol, not RCP. The DM7 Editor's transport is TCP 50368/`MPRO`; CL/QL's is an older,
+   separate protocol — either way not the RCP served on 49280.)
 2. **Scene inc/dec for DM3 & Rivage.** Neither the DM3 nor the Rivage OSC spec documents
    scene inc/dec (only DM7 does). The module still sends `event MIXER:Lib/Scene/RecallInc`
    / `RecallDec` for them (no bank suffix), which may or may not work — confirm on a desk.
@@ -207,8 +212,11 @@ These are isolated in the code so they're one-line fixes:
    `EXPECTED_PRODUCT` in `Yam-RCP.js` deliberately **omits** DM7C/Rivage so no mismatch
    warning fires for them. Once seen on a desk, set the real strings and add the
    `EXPECTED_PRODUCT` entries.
-6. **Other `devinfo` subcommands (low priority).** Whether real desks answer `deviceid`,
-   `serialno`, and `version` — the module displays them; the mock returns constants.
+6. **Other `devinfo` subcommands.** ~~Whether real desks answer `deviceid`, `serialno`,
+   `version`~~ — **firmware-verified (DM7 V1.75):** the `devinfo` handler's key table is
+   `protocolver, paramsetver, version, productname, manufacturer, serialno, category,
+   deviceid, devicename, inputport, outputport, interface`, so all three are genuine
+   subcommands. (The exact *value strings* per model still come from a live desk.)
 7. **CL1 input count = 48 (low risk).** Corrected from Yamaha's Script Template
    `command_list.pdf` (CL1 range `0–47`); confident but not yet confirmed on a CL1.
 8. **Scene re-sync on recall.** On a `sscurrent*` NOTIFY the module now re-`get`s the whole

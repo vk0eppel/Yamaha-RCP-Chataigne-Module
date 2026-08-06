@@ -58,4 +58,8 @@ format all match. `RXEX` is a real engine.
 ## Caveats
 
 - One capture, one engine (DSP-RX-EX), unknown firmware. Verbs/format as-observed.
-- DM7 is expected to behave the same (same `…t_ex` family) but was not captured here.
+- DM7 is expected to behave the same (same `…t_ex` family) but was not captured here. The
+  DM7 firmware **confirms the verb family exists** — `ssrecallt_ex`, `sscurrentt_ex`,
+  `ssinfot_ex`, `ssupdatet_ex` are all present as server dispatch classes (see
+  [`dm7-rcp-parameters.md`](dm7-rcp-parameters.md)) — though the exact wire *values* on DM7
+  are still inferred, not captured.

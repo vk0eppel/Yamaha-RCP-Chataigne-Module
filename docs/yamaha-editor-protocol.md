@@ -16,9 +16,11 @@ Editor is a much larger job than the RCP identity layer already built.
 - The Editor **idle** opens **no** network sockets — it only reaches out when you trigger
   connect / device-select.
 - Discovery is **UDP**, in two forms (below). No TCP is attempted until a console answers.
-- Because no console answered, the **TCP control protocol was never observed** — the
-  Editor never got past discovery. (Yamaha's editor control port is believed to be
-  **tcp/50000**; not seen in this capture.)
+- Because no console answered, the **TCP control protocol was never observed in this
+  capture** — the Editor never got past discovery here. (It has since been captured and
+  decoded in companion DM7 Editor-emulator work: the control port is **tcp/50368** — *not*
+  50000 as earlier assumed — carrying framed `MPRO`/`EEVT` messages with a nested TLV body.
+  See [update](#update-editor-transport-since-decoded).)
 
 ## 1. "LNK" multicast probe
 
@@ -42,8 +44,10 @@ payload: "SDP" .... "_ypax-dm" .... "Yamaha DM7"  "Yamaha DM7"
 ```
 
 - Subnet broadcast, UDP port **`54330`** (source and destination).
-- Header magic **`SDP`**, a service token **`_ypax-dm`**, and the model/friendly name
-  **`Yamaha DM7`** (appears twice — likely model id + display name).
+- Header magic read here as **`SDP`** — the companion emulator work decoded the full 4-char
+  magic as **`YSDP`** (the leading byte was clipped in this ASCII dump). A service token
+  **`_ypax-dm`**, and the model/friendly name **`Yamaha DM7`** (appears twice — likely model
+  id + display name).
 - This is the identity beacon; `54330` is the socket `lsof` first flagged on the Editor.
 
 ## 3. Loopback IPC (not discovery)
@@ -60,22 +64,42 @@ payload: "dvs" ....
 To make the mock appear in the DM7 Editor you would need, in order:
 
 1. **Join `224.76.78.75:20909`** and answer the `LNK` multicast probe.
-2. **Emit / reply to the `SDP` beacon** on udp/`54330`, advertising a model string
+2. **Emit / reply to the `YSDP` beacon** on udp/`54330`, advertising a model string
    (e.g. `Yamaha DM7`).
-3. **Accept and speak the TCP control protocol** (believed tcp/**50000**) once the Editor
-   tries to go online.
+3. **Accept and speak the TCP control protocol** (tcp/**50368**, `MPRO`/`EEVT` framing) once
+   the Editor tries to go online.
 
-Steps 1–2 are reverse-engineerable from more captures. **Step 3 is the wall**: we have
-**zero bytes** of it, because it only begins after a successful discovery handshake, and
-there is no public spec. Reproducing it is a project in its own right, out of proportion
-to a test harness. **Recommendation: do not pursue for the mock.** The mock stays an RCP
-target; the Editor is not a supported client of it.
+Steps 1–2 are reverse-engineerable from captures (done in the companion work). **Step 3 is
+the wall**: the *transport + framing* have since been decoded (byte-exact frame/TLV codec),
+but the *application-level online handshake* — the exact property-tree + command field-map
+responses — still needs a capture of a **real** console finishing an editor sync (an emulator
+alone can't produce it). Reproducing it is a project in its own right, out of proportion to a
+test harness. **Recommendation: do not pursue for the mock.** The mock stays an RCP target;
+the Editor is not a supported client of it.
+
+## Update: Editor transport since decoded
+
+Companion DM7 Editor-**emulator** reverse-engineering (separate project) has since taken this
+past discovery:
+
+- **Control port is tcp/50368** (correcting the earlier tcp/50000 assumption), carrying
+  framed **`MPRO`** (property) / **`EEVT`** (event) messages with a nested TLV body; the
+  frame/TLV codec is verified **byte-exact** against real captured frames.
+- Discovery is **`YSDP`** over UDP 54330 (beacon, both sides announce).
+- The handshake has **no crypto/auth** — it's a plain text `CommandName` switch; session IDs
+  just map a client to a slot.
+- Still **shelved**: the full "go online" reply encoding needs a real console↔editor capture.
+
+None of this changes the recommendation above — it only sharpens *why* Editor support is a
+separate project. This module remains RCP-only (tcp/49280).
 
 ## Caveats
 
 - Single capture, one app version, one host. Ports/addresses/magics are as-observed.
 - Payload internals (the bytes after each magic) are **not** decoded.
-- tcp/50000 for the control protocol is **assumed from prior notes, not observed here**.
+- The control protocol was **not observed in this capture**; the tcp/**50368** + `MPRO`/`EEVT`
+  facts come from the companion emulator captures (see the update section above). The old
+  tcp/50000 guess was wrong.
 - Multicast `224.76.78.75` and broadcast `.255` were seen on both loopback and the LAN
   interface; on-desk behaviour may differ.
 
