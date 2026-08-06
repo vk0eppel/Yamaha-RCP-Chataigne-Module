@@ -273,6 +273,12 @@ function isSceneVerb(action) {
   return action != null && (action.indexOf("ssrecall") === 0 || action.indexOf("sscurrent") === 0);
 }
 
+// True for scene-info verbs (`ssinfo_ex`, `ssinfot_ex`). These carry scene
+// metadata (index, name, comment, type) rather than just a scene number.
+function isSceneInfoVerb(action) {
+  return action != null && action.indexOf("ssinfo") === 0;
+}
+
 // Parse one reply line into { status, action, address, x, y, val, isString, raw }
 // or null if it isn't a value-bearing reply we understand.
 function parseLine(line) {
@@ -305,6 +311,19 @@ function parseLine(line) {
     if (tokens.length < 4) return null;
     var sv = tokens[3];
     return { status: status, action: action, target: tokens[2].value, val: sv.value, isString: sv.quoted, raw: line };
+  }
+
+  // Scene-info reply (`OK ssinfot_ex MIXER:Lib/Scene "8.00" 7 "Blank" "" user`):
+  // target, scene value, index, NAME, comment, type. We surface name + comment.
+  if (isSceneInfoVerb(action)) {
+    if (tokens.length < 4) return null;
+    return {
+      status: status, action: action, target: tokens[2].value,
+      val: tokens[3].value, isString: tokens[3].quoted,
+      sceneName:    tokens.length > 5 ? tokens[5].value : "",
+      sceneComment: tokens.length > 6 ? tokens[6].value : "",
+      raw: line
+    };
   }
 
   if (tokens.length < 6) return null;
@@ -340,6 +359,8 @@ var groupCounts = {};      // groupKey -> channels currently in the tree
 var deviceCont = null;     // "Device" container: identity read from devinfo
 var deviceParamBySub = {}; // "productname"|"deviceid"|"version" -> feedback param
 var sceneCurrentParam = null; // "Scene/Current" feedback param (current scene string)
+var sceneNameParam = null;    // "Scene/Name" feedback param (current scene's name)
+var sceneCommentParam = null; // "Scene/Comment" feedback param (current scene's comment)
 var kaTickSec = 0;         // seconds counted since the last keep-alive ping
 
 // ---- lifecycle -----------------------------------------------------------
@@ -425,6 +446,10 @@ function buildValues() {
     // Feedback-only (not in revByKey, so edits are never echoed out). String holds
     // both CL/QL integers ("8") and DM7/Rivage "N.MM" ("8.00").
     sceneCurrentParam = scene.addStringParameter("Current", "Current scene reported by the console", "");
+    // Name/Comment of the current scene, fetched via ssinfo(t)_ex whenever the
+    // current scene changes (or on Sync). Feedback-only.
+    sceneNameParam = scene.addStringParameter("Name", "Name of the current scene (from ssinfo)", "");
+    sceneCommentParam = scene.addStringParameter("Comment", "Comment of the current scene (from ssinfo)", "");
     built = true;
   }
 
@@ -453,6 +478,8 @@ function teardownTree() {
   deviceCont = null;
   deviceParamBySub = {};
   sceneCurrentParam = null;
+  sceneNameParam = null;
+  sceneCommentParam = null;
   valueByAddrX = {};
   revByKey = {};
 }
@@ -528,6 +555,12 @@ function syncAll() {
   sendLine("devinfo productname");
   sendLine("devinfo deviceid");
   sendLine("devinfo version");
+  // Ask which scene is current; the OK reply drives Scene/Current and, via
+  // applyScene, a follow-up ssinfo query that fills Scene/Name + Scene/Comment.
+  // DM7/DM3 have banks - default to bank A here; a later NOTIFY corrects it.
+  var sc = currentTable.scene;
+  var curTarget = (sc.target == "bank") ? sceneBank("A") : sc.target;
+  sendLine("sscurrent" + sceneVerbSuffix() + " " + curTarget);
   getAllValues();
 }
 
@@ -642,6 +675,10 @@ function dataReceived(data) {
     applyScene(msg);
     return;
   }
+  if (isSceneInfoVerb(msg.action)) {
+    applySceneInfo(msg);
+    return;
+  }
   applyIncoming(msg);
 }
 
@@ -650,6 +687,9 @@ function dataReceived(data) {
 function applyScene(msg) {
   if (sceneCurrentParam == undefined) return;
   setGuarded(sceneCurrentParam, "" + msg.val);
+  // Fetch this scene's name/comment, reusing the exact verb family + target the
+  // desk reported (robust to per-model bank/target differences).
+  querySceneInfo(msg.target, msg.val, msg.isString);
   // A scene recall changes many parameters at once. When the desk reports the new
   // current scene (sscurrent* NOTIFY), re-read the tree so channel values don't go
   // stale - mirrors the Bitfocus Companion re-poll behaviour. The get replies route
@@ -661,6 +701,28 @@ function applyScene(msg) {
   if (msg.status == "NOTIFY" && ("" + msg.action).indexOf("sscurrent") === 0) {
     getAllValues();
   }
+}
+
+// Scene verb suffix for the current model: "t_ex" (DM7/Rivage string scenes) or
+// "_ex" (CL/QL, DM3 integer scenes) - derived from the recall descriptor.
+function sceneVerbSuffix() {
+  return (("" + currentTable.scene.verb).indexOf("t_ex") >= 0) ? "t_ex" : "_ex";
+}
+
+// Ask the desk for a scene's metadata so Scene/Name + Scene/Comment track the
+// current scene. Echoes the target/quoting the desk itself used for the scene.
+function querySceneInfo(target, val, isString) {
+  if (sceneNameParam == undefined) return;
+  if (target == undefined || ("" + target).length === 0) return;
+  if (val == undefined || ("" + val).length === 0) return;
+  var v = isString ? quote("" + val) : ("" + val);
+  sendLine("ssinfo" + sceneVerbSuffix() + " " + target + " " + v);
+}
+
+// Reflect a scene-info reply into Scene/Name and Scene/Comment (display-only).
+function applySceneInfo(msg) {
+  if (sceneNameParam != undefined) setGuarded(sceneNameParam, "" + msg.sceneName);
+  if (sceneCommentParam != undefined) setGuarded(sceneCommentParam, "" + msg.sceneComment);
 }
 
 // Fill the Device container from a `devinfo` reply, and warn if the reported

@@ -46,8 +46,11 @@ format all match. `RXEX` is a real engine.
   to a **String** so it holds both `"8.00"` and CL/QL integers). The mock now emits these
   real verbs (`injectScene()`), so the path is testable — replacing the old fabricated
   `MIXER:Lib/Scene/Recall` line.
-- **`ssupdatet_ex`** (store) and **`ssinfot_ex`** (names/indices) — still **unused**; they
-  would enable scene-*name* display, deferred for now.
+- **`ssinfot_ex`** (names/indices) — **now used:** on Sync and on every scene change the
+  module queries `ssinfo(t)_ex <target> <scene>` and reflects the reply's name/comment into
+  `Scene/Name` and `Scene/Comment` (`querySceneInfo()`/`applySceneInfo()` in `Yam-RCP.js`).
+  The reply layout parsed is exactly this capture's: `… <index> "<name>" "<comment>" <type>`.
+- **`ssupdatet_ex`** (store) — still **unused**; would back a "Store Scene" command, deferred.
 
 ## Still open
 

@@ -173,6 +173,20 @@ function handleLine(sock, line) {
   if (cmd === "event" && addr === "MIXER:Lib/Scene/RecallInc") { currentScene++; reply(sock, "OK " + line); broadcastCurrent(null); return; }
   if (cmd === "event" && addr === "MIXER:Lib/Scene/RecallDec") { if (currentScene > 0) currentScene--; reply(sock, "OK " + line); broadcastCurrent(null); return; }
 
+  // Query current scene: `sscurrent(t)_ex <target>` -> OK with the scene value.
+  if (cmd === "sscurrent_ex" || cmd === "sscurrentt_ex") {
+    reply(sock, "OK " + cmd + " " + (addr || "MIXER:Lib/Scene") + " " + sceneVal(currentScene));
+    return;
+  }
+  // Query scene metadata: `ssinfo(t)_ex <target> <sceneVal>` -> OK with
+  // index, quoted name, quoted comment, type (matches the Rivage capture shape).
+  if (cmd === "ssinfo_ex" || cmd === "ssinfot_ex") {
+    var sn = sceneIndexOf(x); // x = the scene value token
+    var val = x != null ? x : sceneVal(currentScene);
+    reply(sock, "OK " + cmd + " " + (addr || "MIXER:Lib/Scene") + " " + val + " " + sn + ' "Scene ' + sn + '" "" user');
+    return;
+  }
+
   reply(sock, "ERROR " + line);
 }
 

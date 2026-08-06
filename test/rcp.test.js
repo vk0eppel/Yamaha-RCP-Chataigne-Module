@@ -74,6 +74,9 @@ eq(parseLine('NOTIFY ssrecallt_ex MIXER:Lib/Scene "8.00"'),
 eq(parseLine('NOTIFY sscurrentt_ex MIXER:Lib/Scene "9.00"').val, "9.00", "parse current-scene value");
 eq(parseLine("NOTIFY ssrecall_ex MIXER:Lib/Scene 5").val, "5", "parse CL/QL integer scene recall");
 eq(parseLine("NOTIFY ssrecall_ex MIXER:Lib/Scene 5").isString, false, "integer scene is not a string");
+eq(parseLine('OK ssinfot_ex MIXER:Lib/Scene "8.00" 7 "Blank" "" user').sceneName, "Blank", "parse scene-info name");
+eq(parseLine('OK ssinfot_ex MIXER:Lib/Scene "8.00" 7 "Vocal Mix" "note" user').sceneComment, "note", "parse scene-info comment");
+eq(parseLine("OK ssinfo_ex MIXER:Lib/Scene 5 5 \"Intro\" \"\" user").sceneName, "Intro", "parse CL/QL scene-info name");
 eq(parseLine("random noise"), null, "non-reply -> null");
 eq(parseLine(""), null, "empty -> null");
 eq(parseLine("ERROR set Foo 0 0 0").status, "ERROR", "error status recognized");

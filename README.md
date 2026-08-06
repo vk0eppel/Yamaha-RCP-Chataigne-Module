@@ -92,10 +92,11 @@ every model — an unsupported group/channel is simply ignored) and a 1-based ch
 | Sync Now | request all current values from the console |
 
 Feedback appears under **Values → `<group>` → NN** (e.g. `Input Channels → 01`,
-`Mix → 03`, `DCA → 02`) with Level / On / Name / Color. **Values → Scene → Current**
-reflects the desk's current scene (from `ssrecall`/`sscurrent` notifications — a string,
-so `"8"` on CL/QL and `"8.00"` on DM7/Rivage); **Values → Device** shows the model the
-console reports. (Scene *name* and inc/dec confirmation are still open — see below.)
+`Mix → 03`, `DCA → 02`) with Level / On / Name / Color. **Values → Scene** shows
+**Current** (the current scene number — a string, so `"8"` on CL/QL and `"8.00"` on
+DM7/Rivage) plus **Name** and **Comment**, fetched via `ssinfo(t)_ex` on Sync and on
+every scene change; **Values → Device** shows the model the console reports. (Scene
+inc/dec confirmation is still open — see below.)
 
 ## Offline testing (no console)
 
