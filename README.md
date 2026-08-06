@@ -83,6 +83,7 @@ every model — an unsupported group/channel is simply ignored) and a 1-based ch
 | Command | Notes |
 |---|---|
 | Set Fader Level | group, channel, level in dB (−138 = −∞, +10 max) |
+| Set HA Gain | input channel, head-amp gain −6…+66 dB (**DM7**; other models patch HA differently) |
 | Set Channel On | group, channel, on/off |
 | Set Channel Name | group, channel, string |
 | Set Channel Color | group, channel, colour name (per-model palette: CL/QL & DM3 = 9, DM7 & Rivage = 11) |
@@ -92,7 +93,8 @@ every model — an unsupported group/channel is simply ignored) and a 1-based ch
 | Sync Now | request all current values from the console |
 
 Feedback appears under **Values → `<group>` → NN** (e.g. `Input Channels → 01`,
-`Mix → 03`, `DCA → 02`) with Level / On / Name / Color. **Values → Scene** shows
+`Mix → 03`, `DCA → 02`) with Level / On / Name / Color (plus **HA Gain** on DM7 input
+channels). **Values → Scene** shows
 **Current** (the current scene number — a string, so `"8"` on CL/QL and `"8.00"` on
 DM7/Rivage) plus **Name** and **Comment**, fetched via `ssinfo(t)_ex` on Sync and on
 every scene change; **Values → Device** shows the model the console reports. (Scene

@@ -115,9 +115,28 @@ event_scp [no] [id]               : Execute event [id] of session [no].
 
 ## Module coverage (DM7 table)
 
-The module generates 22 DM7 addresses (Fader Level/On + Label Name/Color for
-InCh/Mix/Mtrx/St/DCA; On/Name for MuteGrpCtrl). **All 22 exist in firmware; 0
-wrong.** ✓ = covered by the module below. The other 198 are the expansion menu.
+The module generates the Fader Level/On + Label Name/Color addresses for
+InCh/Mix/Mtrx/St/DCA and On/Name for MuteGrpCtrl (22 addresses), **plus
+`InCh/Port/HA/Gain`** (head-amp gain, see below). All exist in firmware; 0 wrong.
+✓ = covered by the module below; the rest are the expansion menu.
+
+## Parameter metadata (from `prminfo`)
+
+Value ranges/scale/dimensionality come from a real-desk `prminfo` dump
+(`OK prminfo <index> "<addr>" <Xmax> <Ymax> <min> <max> <default> "<unit>" <type> <ui> <rw> <scale>`).
+Two expansion params explored in detail:
+
+- **`MIXER:Current/InCh/Port/HA/Gain`** — head-amp (preamp) gain. `Xmax=120` (per input
+  channel, `y=0`), **`min=-6 max=66 default=0` dB, `scale=1`** → the wire value *is* the dB
+  (1 dB steps), unlike Fader/Level (`scale=100`). **Now implemented** as a per-input-channel
+  value + a `Set HA Gain` command (DM7 only). Other models differ and are *not* wired: CL/QL &
+  Rivage use `scale=100` (−600…6600), and Rivage's `Xmax=6` looks like physical HA ports, not
+  channels; DM3 has no `Port/HA/Gain`.
+- **`MIXER:Current/InCh/PatchSelect`** — **not** input-source patching. `min=0 max=1`,
+  Rivage UI type `latchsw`: it is the input channel's **SEL / select state** (write `1` to make
+  it the desk's *selected channel*; it feeds the firmware's `SelectedCH` focus —
+  `ChangeSelectedCH`/`RequestSelectedCH`/`SelectedChView`). Actual source patching (DANTE/SLOT)
+  is a separate string/`listitem` parameter. Not implemented.
 
 ## All 220 `MIXER:` addresses (grouped)
 
@@ -176,7 +195,7 @@ MIXER:Current/InCh/PEQ/On
 MIXER:Current/InCh/PEQ/Type
 MIXER:Current/InCh/PanMode
 MIXER:Current/InCh/PatchSelect
-MIXER:Current/InCh/Port/HA/Gain
+MIXER:Current/InCh/Port/HA/Gain  <- module
 MIXER:Current/InCh/Role
 MIXER:Current/InCh/Surr/COn
 MIXER:Current/InCh/Surr/Div

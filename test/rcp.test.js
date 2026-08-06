@@ -52,6 +52,8 @@ eq(buildSet("MIXER:Current/InCh/Label/Name", 15, 0, "Kick In", true),
    'set MIXER:Current/InCh/Label/Name 15 0 "Kick In"', "buildSet quoted string");
 eq(buildGet("MIXER:Current/InCh/Fader/On", 3, 0),
    "get MIXER:Current/InCh/Fader/On 3 0", "buildGet");
+eq(buildSet("MIXER:Current/InCh/Port/HA/Gain", 5, 0, 12, false),
+   "set MIXER:Current/InCh/Port/HA/Gain 5 0 12", "buildSet HA gain (int dB, unquoted)");
 eq(quote('a "b" c'), '"a \\"b\\" c"', "quote escapes inner quotes");
 
 // parsing replies

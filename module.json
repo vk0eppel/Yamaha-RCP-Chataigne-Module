@@ -67,6 +67,14 @@
         "Level (dB)": { "type": "Float", "min": -138, "max": 10, "default": 0 }
       }
     },
+    "Set HA Gain": {
+      "menu": "Channel",
+      "callback": "cmdSetHAGain",
+      "parameters": {
+        "Channel": { "type": "Integer", "min": 1, "max": 288, "default": 1 },
+        "Gain (dB)": { "type": "Float", "min": -6, "max": 66, "default": 0, "description": "Input head-amp gain, -6..+66 dB. DM7 only (other models expose HA gain differently)." }
+      }
+    },
     "Set Channel On": {
       "menu": "Channel",
       "callback": "cmdSetChannelOn",

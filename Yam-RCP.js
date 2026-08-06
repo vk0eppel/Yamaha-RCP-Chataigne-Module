@@ -117,26 +117,39 @@ var RIVAGE_MODELS = {
   PM7:  { InCh: 144, Mix: 60, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 }
 };
 
-// Build the parameter specs for a group from its address prefix.
-function specsForGroup(g, colors) {
+// Head-amp (preamp) gain on Input Channels. prminfo-verified per model; ranges
+// and scale differ, so it's a per-table descriptor (only where confirmed):
+//   DM7    : -6..66 dB, scale 1  (wire value == dB, 1 dB steps)   [X=120]
+//   CL/QL  : -6..66 dB, scale 100 and Rivage differ - not wired yet (see docs).
+//   DM3    : no HA on the RCP surface.
+var DM7_HAGAIN = { address: "MIXER:Current/InCh/Port/HA/Gain", min: -6, max: 66, scale: 1, def: 0 };
+
+// Build the parameter specs for a group from its address prefix. `haGain` (or null)
+// adds the Input-Channel head-amp gain param for tables that expose it.
+function specsForGroup(g, colors, haGain) {
   if (g.mute) {
     return [
       { id: "on",   label: "On",   address: "MIXER:Current/" + g.key + "/On",        type: "int",    scale: 1, min: 0, max: 1 },
       { id: "name", label: "Name", address: "MIXER:Current/" + g.key + "/Label/Name", type: "string", scale: 1 }
     ];
   }
-  return [
+  var specs = [
     { id: "level", label: "Level", address: "MIXER:Current/" + g.key + "/Fader/Level", type: "int",    scale: 100, min: -32768, max: 1000 },
     { id: "on",    label: "On",    address: "MIXER:Current/" + g.key + "/Fader/On",    type: "int",    scale: 1, min: 0, max: 1 },
     { id: "name",  label: "Name",  address: "MIXER:Current/" + g.key + "/Label/Name",  type: "string", scale: 1 },
     { id: "color", label: "Color", address: "MIXER:Current/" + g.key + "/Label/Color", type: "enum",   scale: 1, options: colors }
   ];
+  if (g.key == "InCh" && haGain) {
+    specs.push({ id: "hagain", label: "HA Gain", address: haGain.address, type: "int",
+                 scale: haGain.scale, min: haGain.min, max: haGain.max, def: haGain.def });
+  }
+  return specs;
 }
-function attachSpecs(groups, colors) { for (var i = 0; i < groups.length; i++) groups[i].params = specsForGroup(groups[i], colors); }
-attachSpecs(CLQL_GROUPS, CLQL_COLORS);
-attachSpecs(DM7_GROUPS, DM7_COLORS);
-attachSpecs(DM3_GROUPS, DM3_COLORS);      // DM3 uses the CL/QL 8-colour set (not DM7's)
-attachSpecs(RIVAGE_GROUPS, RIVAGE_COLORS);
+function attachSpecs(groups, colors, haGain) { for (var i = 0; i < groups.length; i++) groups[i].params = specsForGroup(groups[i], colors, haGain); }
+attachSpecs(CLQL_GROUPS, CLQL_COLORS);       // CL/QL HA gain uses scale 100 - not wired yet
+attachSpecs(DM7_GROUPS, DM7_COLORS, DM7_HAGAIN);
+attachSpecs(DM3_GROUPS, DM3_COLORS);      // DM3 uses the CL/QL 8-colour set (not DM7's); no HA
+attachSpecs(RIVAGE_GROUPS, RIVAGE_COLORS);   // Rivage HA gain is addressed differently (X=6)
 
 // Scene-recall descriptors (verbs/format differ per console, from Companion):
 //   verb    "ssrecall_ex" (CL/QL, DM3) | "ssrecallt_ex" (DM7)
@@ -524,6 +537,9 @@ function addChannelParam(container, spec) {
   if (spec.id == "level") {
     return container.addFloatParameter(spec.label, spec.address, 0, RCP_DB_FLOOR, spec.max / spec.scale);
   }
+  if (spec.id == "hagain") {
+    return container.addFloatParameter(spec.label, spec.address, spec.def, spec.min / spec.scale, spec.max / spec.scale);
+  }
   if (spec.id == "on") {
     return container.addBoolParameter(spec.label, spec.address, true);
   }
@@ -594,6 +610,14 @@ function cmdSetFaderLevel(group, channel, levelDb) {
   var spec = groupParamSpec(group, "level");
   if (spec == undefined) return;
   sendLine(buildSet(spec.address, channel - 1, 0, dbToRaw(levelDb, spec.min, spec.max, spec.scale), false));
+}
+
+// Head-amp gain on an input channel (dB). Only sent for models that expose it
+// (DM7); a no-op on models without a modeled InCh HA gain.
+function cmdSetHAGain(channel, gainDb) {
+  var spec = groupParamSpec("InCh", "hagain");
+  if (spec == undefined) return;
+  sendLine(buildSet(spec.address, channel - 1, 0, clampInt(Math.round(gainDb * spec.scale), spec.min, spec.max), false));
 }
 
 function cmdSetChannelOn(group, channel, on) {
@@ -750,6 +774,7 @@ function applyIncoming(msg) {
     var spec = entry.spec;
     var v;
     if (spec.id == "level") v = rawToDb(msg.val, spec.scale);
+    else if (spec.id == "hagain") v = msg.val / spec.scale; // raw (dB*scale) -> dB
     else if (spec.id == "on") v = (msg.val == 1);
     else v = msg.val; // name / color strings
     // Record the console's value BEFORE applying it, so the value change it
@@ -805,8 +830,16 @@ function moduleValueChanged(value) {
 // The RCP wire value for a given value parameter (raw int or string).
 function wireValueOf(spec, value) {
   if (spec.id == "level") return dbToRaw(value.get(), spec.min, spec.max, spec.scale);
+  if (spec.id == "hagain") return clampInt(Math.round(value.get() * spec.scale), spec.min, spec.max);
   if (spec.id == "on") return value.get() ? 1 : 0;
   return value.get();
+}
+
+// Clamp an integer wire value into [min, max] (avoids Math.min/max 2-arg quirks).
+function clampInt(v, min, max) {
+  if (v < min) return min;
+  if (v > max) return max;
+  return v;
 }
 
 function isStringSpec(spec) {
