@@ -18,8 +18,9 @@ newline-delimited TCP protocol on **port 49280**.
 | Rivage PM    | ✅ DSP-RX / DSP-RX-EX / DSP-R10 / CSD-R7 — verified against the Rivage PM OSC spec (v1.0.2) and editor; see Known items |
 
 **Scope:** fader level, on/mute, name, and color across **all channel groups**,
-plus scene recall (+ inc/dec) and generic `Get`/`Set`. Pick your **Console Model**
-and the tree is sized to it:
+input **head-amp gain** (CL/QL, DM3, DM7), scene recall (+ inc/dec) with scene
+name/comment feedback, an optional keep-alive, and generic `Get`/`Set`. Pick your
+**Console Model** and the tree is sized to it:
 
 - **CL/QL** (CL1/CL3/CL5/QL1/QL5): Input Channels, Stereo In, Mix, Matrix, Stereo
   Main, DCA, Mute Groups.
