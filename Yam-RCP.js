@@ -340,16 +340,43 @@ var groupCounts = {};      // groupKey -> channels currently in the tree
 var deviceCont = null;     // "Device" container: identity read from devinfo
 var deviceParamBySub = {}; // "productname"|"deviceid"|"version" -> feedback param
 var sceneCurrentParam = null; // "Scene/Current" feedback param (current scene string)
+var kaTickSec = 0;         // seconds counted since the last keep-alive ping
 
 // ---- lifecycle -----------------------------------------------------------
 
 function init() {
   buildValues();
+  // Drive update() at 1 Hz so the keep-alive counter below ticks in whole
+  // seconds regardless of the deltaTime unit. The loop is inert when the
+  // "Keep Alive Interval" parameter is 0.
+  script.setUpdateRate(1);
 }
 
 // Resize the value tree when the console model changes.
 function moduleParameterChanged(param) {
-  if (param.isParameter() && param.name == "consoleModel") buildValues();
+  if (!param.isParameter()) return;
+  if (param.name == "consoleModel") buildValues();
+  if (param.name == "keepAliveInterval") kaTickSec = 0; // restart the ping window
+}
+
+// Called ~once/second (see init's setUpdateRate). When keep-alive is enabled,
+// send harmless traffic (`devstatus runmode`) every N seconds so the desk does
+// not close an idle RCP connection - which would silently kill NOTIFY feedback.
+// Opt-in and UNVERIFIED on hardware; see README "Still to confirm" #1.
+function update(deltaTime) {
+  var s = keepAliveSec();
+  if (s <= 0) return;
+  kaTickSec++;
+  if (kaTickSec >= s) {
+    kaTickSec = 0;
+    sendLine("devstatus runmode");
+  }
+}
+
+// Keep-alive interval in seconds (0 = disabled).
+function keepAliveSec() {
+  var s = readModuleParam("keepAliveInterval", 0);
+  return (s > 0) ? s : 0;
 }
 
 // ---- value tree ----------------------------------------------------------
@@ -488,6 +515,15 @@ function sendLine(line) {
 // Prime all modeled values and (re)establish notifications.
 function syncAll() {
   subscribeAll();
+  // If keep-alive is on, tell the desk our idle window. The firmware treats the
+  // value as ~2x the expected ping interval (it stores keepalive/2), so we send
+  // 2x our ping interval (min 1000ms, the desk's floor). update() does the pings.
+  var ka = keepAliveSec();
+  if (ka > 0) {
+    var winMs = ka * 2000;
+    if (winMs < 1000) winMs = 1000;
+    sendLine("scpmode keepalive " + winMs);
+  }
   // Ask the desk who it is (fills the Device container + mismatch warning).
   sendLine("devinfo productname");
   sendLine("devinfo deviceid");

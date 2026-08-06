@@ -73,6 +73,24 @@ This upgrades several items from "assumed" to "firmware-verified":
 Still needing a live desk (not recoverable from static code): the exact quote bytes emitted
 by the low-level response serializer, and the definitive originator-exclusion on NOTIFY.
 
+### `scpmode` — per-connection session options
+
+`scpmode <key> <value>` tunes how *this* RCP session behaves (decompiled from
+`ScpClientCommandSCPMODE` / `FUN_017e6890`; the desk echoes `OK scpmode <key> <value>`):
+
+| Command | Values | Effect |
+|---|---|---|
+| `scpmode keepalive <ms>` | int **≥ 1000** | Idle-timeout window; the server drops the connection if it sees no traffic within it (firmware `KEEPALIVE_TIMEOUT(%dmsec)`). Stores **half** the value internally (expected ping interval). |
+| `scpmode format` | `raw` \| `json` | Reply/body format — plain RCP text vs JSON. |
+| `scpmode encoding` | `ascii` \| `utf8` | String encoding for text values. |
+| `scpmode valuetype` | `raw` \| `normalized` | Values as raw/absolute ints vs normalized 0–1. |
+| `scpmode resolution <n>` | int **≥ 100** | Numeric value resolution. |
+
+Only `keepalive` matters to this module (stops the desk closing an idle socket, which would
+kill NOTIFY feedback). Note: the Bitfocus Companion module sends `scpmode sstype "text"`, but
+**`sstype` is not a DM7 key** — it errors on a DM7 (which uses text `"N.MM"` scenes by default),
+so don't copy it.
+
 ### Scene / snapshot argument syntax
 
 From the firmware's built-in debug CLI — shows the argument shapes (`[category]`,

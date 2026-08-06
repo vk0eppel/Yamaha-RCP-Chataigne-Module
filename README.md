@@ -196,17 +196,19 @@ These are isolated in the code so they're one-line fixes:
    protocol, not RCP. The DM7 Editor's transport is TCP 50368/`MPRO`; CL/QL's is an older,
    separate protocol — either way not the RCP served on 49280.)
 2. **Scene inc/dec for DM3 & Rivage.** Neither the DM3 nor the Rivage OSC spec documents
-   scene inc/dec (only DM7 does). The module still sends `event MIXER:Lib/Scene/RecallInc`
-   / `RecallDec` for them (no bank suffix), which may or may not work — confirm on a desk.
-   (Rivage scene *recall* is now hardware-confirmed — see the scene-recall bullet above —
-   but this inc/dec path is still unverified.)
+   scene inc/dec (only DM7 does). The module sends `event MIXER:Lib/Scene/RecallInc` /
+   `RecallDec` for them (no bank suffix). **Corroborated:** the Bitfocus Companion module
+   sends the *identical* string for all non-DM7 models (bank stripped; only DM7 appends
+   `scene_a/b`), so this matches a real-hardware-tested reference — a live check would make
+   it certain.
 3. **CL/QL.** No Yamaha OSC spec was available for CL/QL, so its addresses, scene verbs
    (`ssrecall_ex MIXER:Lib/Scene <n>`), and 9-colour palette remain sourced from the
    Bitfocus Companion module rather than a first-party spec.
 4. **`devinfo productname` wire format.** The **Device** container and the model-mismatch
    warning depend on the exact reply shape — `OK devinfo productname "CL5"` (prefix `OK`,
-   verb echoed, value quoted). Capture a real desk's reply and confirm it matches
-   `parseLine()` in `Yam-RCP.js` and the mock's `okQuoted()`.
+   verb echoed, value quoted). **Corroborated:** the Bitfocus Companion module parses exactly
+   this — `Status Action Address Val` with the quotes stripped from `Val` — against real
+   desks, matching `parseLine()` in `Yam-RCP.js` and the mock's `okQuoted()`.
 5. **DM7C & Rivage product-name strings.** `PRODUCTNAME` in `test/mock-console.js` uses
    placeholders (`DM7C → "DM7"`, all Rivage engines → `"RIVAGE PM"`), and
    `EXPECTED_PRODUCT` in `Yam-RCP.js` deliberately **omits** DM7C/Rivage so no mismatch
@@ -217,13 +219,15 @@ These are isolated in the code so they're one-line fixes:
    `protocolver, paramsetver, version, productname, manufacturer, serialno, category,
    deviceid, devicename, inputport, outputport, interface`, so all three are genuine
    subcommands. (The exact *value strings* per model still come from a live desk.)
-7. **CL1 input count = 48 (low risk).** Corrected from Yamaha's Script Template
-   `command_list.pdf` (CL1 range `0–47`); confident but not yet confirmed on a CL1.
+7. **CL1 input count = 48.** ~~confident but not yet confirmed~~ — **confirmed from Yamaha's
+   specs** (CL1 has 48 mono inputs; matches the Script Template `command_list.pdf` range `0–47`).
 8. **Scene re-sync on recall.** On a `sscurrent*` NOTIFY the module now re-`get`s the whole
-   tree (a scene changes many values at once — mirrors Companion). Two assumptions to
-   confirm on a desk: (a) whether the console withholds `sscurrent` from the client that
-   *recalled* (if so, our own **Recall Scene** won't auto-refresh — a follow-up), and
-   (b) whether `get`s issued right after a recall read settled (not mid-fade) values.
+   tree (a scene changes many values at once). **Corroborated:** Companion does the same —
+   on `sscurrent*` NOTIFY it calls `pollConsole()` (re-reads everything). Two assumptions
+   still shared with Companion, unconfirmed on a desk: (a) whether the console withholds
+   `sscurrent` from the client that *recalled* (if so, our own **Recall Scene** won't
+   auto-refresh — a follow-up), and (b) whether `get`s issued right after a recall read
+   settled (not mid-fade) values.
 
 _See also_ [`docs/yamaha-editor-protocol.md`](docs/yamaha-editor-protocol.md) for the
 Editor's discovery/control protocol — reconnaissance only, intentionally **not**
@@ -232,6 +236,13 @@ implemented, so not a module verification item.
 There is no scriptable connection-status flag exposed to modules, so the module
 does not auto-sync on connect. **After connecting, run the `Sync Now` command**
 to prime values from the console (it sends a `get` for every modeled parameter).
+
+**Keep-Alive (optional).** Some desks close an idle RCP socket, which silently kills
+`NOTIFY` feedback. The **Keep Alive Interval** parameter (seconds, default `0` = off)
+mirrors the Bitfocus Companion approach: on `Sync Now` it sends `scpmode keepalive`, then
+polls `devstatus runmode` on that interval to keep traffic flowing. `scpmode keepalive` is
+firmware-verified on DM7 (see [`docs/dm7-rcp-parameters.md`](docs/dm7-rcp-parameters.md)),
+but the *need* for it is unverified — leave it at `0` unless your desk drops the connection.
 
 > Note: Chataigne's script engine (JUCE's `JavascriptEngine`) is a restricted,
 > ES5-ish dialect. Avoid: `try/catch`, regex literals, the `delete` operator,
