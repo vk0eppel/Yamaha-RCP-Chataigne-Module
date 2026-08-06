@@ -126,12 +126,15 @@ Value ranges/scale/dimensionality come from a real-desk `prminfo` dump
 (`OK prminfo <index> "<addr>" <Xmax> <Ymax> <min> <max> <default> "<unit>" <type> <ui> <rw> <scale>`).
 Two expansion params explored in detail:
 
-- **`MIXER:Current/InCh/Port/HA/Gain`** — head-amp (preamp) gain. `Xmax=120` (per input
+- **head-amp (preamp) gain** — DM7 `MIXER:Current/InCh/Port/HA/Gain`, `Xmax=120` (per input
   channel, `y=0`), **`min=-6 max=66 default=0` dB, `scale=1`** → the wire value *is* the dB
-  (1 dB steps), unlike Fader/Level (`scale=100`). **Now implemented** as a per-input-channel
-  value + a `Set HA Gain` command (DM7 only). Other models differ and are *not* wired: CL/QL &
-  Rivage use `scale=100` (−600…6600), and Rivage's `Xmax=6` looks like physical HA ports, not
-  channels; DM3 has no `Port/HA/Gain`.
+  (1 dB steps), unlike Fader/Level (`scale=100`). **Implemented** as a per-input-channel value
+  + a `Set HA Gain` command, wired per model from each one's `prminfo` (the module stores a
+  per-table descriptor):
+    - **DM7** — `MIXER:Current/InCh/Port/HA/Gain`, −6…66 dB, scale 1.
+    - **CL/QL** — same address, −6…66 dB, **scale 100** (wire = dB×100).
+    - **DM3** — **`IO:Current/InCh/HAGain`** (note the `IO:` namespace, not `MIXER:`), 0…64 dB, scale 1.
+    - **Rivage** — `Port/HA/Gain` exists but `Xmax=6` (engine-local inputs; HA is on RPio racks), so **not wired**.
 - **`MIXER:Current/InCh/PatchSelect`** — **not** input-source patching. `min=0 max=1`,
   Rivage UI type `latchsw`: it is the input channel's **SEL / select state** (write `1` to make
   it the desk's *selected channel*; it feeds the firmware's `SelectedCH` focus —

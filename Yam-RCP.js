@@ -117,12 +117,16 @@ var RIVAGE_MODELS = {
   PM7:  { InCh: 144, Mix: 60, Mtrx: 36, St: 4, DCA: 24, MuteMaster: 12 }
 };
 
-// Head-amp (preamp) gain on Input Channels. prminfo-verified per model; ranges
-// and scale differ, so it's a per-table descriptor (only where confirmed):
-//   DM7    : -6..66 dB, scale 1  (wire value == dB, 1 dB steps)   [X=120]
-//   CL/QL  : -6..66 dB, scale 100 and Rivage differ - not wired yet (see docs).
-//   DM3    : no HA on the RCP surface.
-var DM7_HAGAIN = { address: "MIXER:Current/InCh/Port/HA/Gain", min: -6, max: 66, scale: 1, def: 0 };
+// Head-amp (preamp) gain on Input Channels. prminfo-verified per model; the
+// address, range and scale differ, so it's a per-table descriptor. min/max/def
+// are RAW wire units (divided by scale for the dB-valued parameter):
+//   DM7    : MIXER:Current/InCh/Port/HA/Gain   -6..66 dB   scale 1    [X=120]
+//   CL/QL  : MIXER:Current/InCh/Port/HA/Gain   -6..66 dB   scale 100  [X=72]
+//   DM3    : IO:Current/InCh/HAGain            0..64 dB    scale 1    [X=16] (IO: namespace!)
+//   Rivage : Port/HA/Gain exists but X=6 (engine-local inputs; HA is rack-based) - not wired.
+var DM7_HAGAIN  = { address: "MIXER:Current/InCh/Port/HA/Gain", min: -6,   max: 66,   scale: 1,   def: 0    };
+var CLQL_HAGAIN = { address: "MIXER:Current/InCh/Port/HA/Gain", min: -600, max: 6600, scale: 100, def: -600 };
+var DM3_HAGAIN  = { address: "IO:Current/InCh/HAGain",          min: 0,    max: 64,   scale: 1,   def: 0    };
 
 // Build the parameter specs for a group from its address prefix. `haGain` (or null)
 // adds the Input-Channel head-amp gain param for tables that expose it.
@@ -146,10 +150,10 @@ function specsForGroup(g, colors, haGain) {
   return specs;
 }
 function attachSpecs(groups, colors, haGain) { for (var i = 0; i < groups.length; i++) groups[i].params = specsForGroup(groups[i], colors, haGain); }
-attachSpecs(CLQL_GROUPS, CLQL_COLORS);       // CL/QL HA gain uses scale 100 - not wired yet
+attachSpecs(CLQL_GROUPS, CLQL_COLORS, CLQL_HAGAIN);
 attachSpecs(DM7_GROUPS, DM7_COLORS, DM7_HAGAIN);
-attachSpecs(DM3_GROUPS, DM3_COLORS);      // DM3 uses the CL/QL 8-colour set (not DM7's); no HA
-attachSpecs(RIVAGE_GROUPS, RIVAGE_COLORS);   // Rivage HA gain is addressed differently (X=6)
+attachSpecs(DM3_GROUPS, DM3_COLORS, DM3_HAGAIN); // DM3 uses the CL/QL 8-colour set; HA via IO: namespace
+attachSpecs(RIVAGE_GROUPS, RIVAGE_COLORS);       // Rivage HA is rack-based (Port/HA/Gain X=6) - not wired
 
 // Scene-recall descriptors (verbs/format differ per console, from Companion):
 //   verb    "ssrecall_ex" (CL/QL, DM3) | "ssrecallt_ex" (DM7)
@@ -538,7 +542,7 @@ function addChannelParam(container, spec) {
     return container.addFloatParameter(spec.label, spec.address, 0, RCP_DB_FLOOR, spec.max / spec.scale);
   }
   if (spec.id == "hagain") {
-    return container.addFloatParameter(spec.label, spec.address, spec.def, spec.min / spec.scale, spec.max / spec.scale);
+    return container.addFloatParameter(spec.label, spec.address, spec.def / spec.scale, spec.min / spec.scale, spec.max / spec.scale);
   }
   if (spec.id == "on") {
     return container.addBoolParameter(spec.label, spec.address, true);

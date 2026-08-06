@@ -72,7 +72,7 @@
       "callback": "cmdSetHAGain",
       "parameters": {
         "Channel": { "type": "Integer", "min": 1, "max": 288, "default": 1 },
-        "Gain (dB)": { "type": "Float", "min": -6, "max": 66, "default": 0, "description": "Input head-amp gain, -6..+66 dB. DM7 only (other models expose HA gain differently)." }
+        "Gain (dB)": { "type": "Float", "min": -6, "max": 66, "default": 0, "description": "Input head-amp gain in dB (clamped per model: DM7 & CL/QL -6..+66, DM3 0..+64). Rivage HA is rack-based and not wired." }
       }
     },
     "Set Channel On": {
