@@ -5,8 +5,8 @@
   "author": "Victor Koeppel",
   "version": "0.1.0",
   "description": "Control Yamaha digital consoles (CL/QL, DM3, DM7, Rivage PM) over the Remote Control Protocol (RCP). Two-way: sends commands and reflects console-side changes via NOTIFY.",
-  "url": "https://github.com/vkoeppel/Yamaha-RCP-Chataigne-Module",
-  "downloadURL": "https://github.com/vkoeppel/Yamaha-RCP-Chataigne-Module/archive/master.zip",
+  "url": "https://github.com/vk0eppel/Yamaha-RCP-Chataigne-Module",
+  "downloadURL": "https://github.com/vk0eppel/Yamaha-RCP-Chataigne-Module/archive/master.zip",
 
   "hasInput": true,
   "hasOutput": true,
