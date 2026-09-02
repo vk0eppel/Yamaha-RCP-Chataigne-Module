@@ -720,7 +720,17 @@ function dataReceived(data) {
   var msg = parseLine(data);
   if (msg == null) return;
   if (msg.status == "ERROR") {
-    script.logWarning("Yamaha RCP error: " + msg.raw);
+    // `ERROR ... InvalidArgument` is an EXPECTED reply during bulk polling: an
+    // address/index that doesn't exist on this model/patch (hardware-confirmed
+    // on DM7 - `InCh/Port/HA/Gain/N` only answers for channels patched to a
+    // physical head amp; the rest error, ~345 per sync). It's benign - the
+    // param just isn't there - so don't spam warnings for it; log only under
+    // DEBUG. Real errors (bad syntax, etc.) still surface as warnings.
+    if (indexOfSafe("" + msg.raw, "InvalidArgument") >= 0) {
+      if (DEBUG) script.log("(ignored) " + msg.raw);
+    } else {
+      script.logWarning("Yamaha RCP error: " + msg.raw);
+    }
     return;
   }
   if (msg.action == "devinfo" || msg.action == "devstatus") {
