@@ -281,19 +281,41 @@ function tokenize(line) {
   return tokens;
 }
 
+// Manual substring search (charAt/length only). Chataigne's script engine does
+// not reliably support String.indexOf() - on real CL5 hardware it silently
+// returned false/-1 for calls that work fine under plain Node, which broke
+// every indexOf()-based check below (isSceneVerb, isSceneInfoVerb,
+// sceneVerbSuffix, applyScene) and made all scene handling a silent no-op,
+// even though tokenize()/parseLine() themselves were correct. Returns the
+// index of the first match, or -1.
+function indexOfSafe(hay, needle) {
+  hay = "" + hay;
+  needle = "" + needle;
+  var hn = hay.length, nn = needle.length;
+  if (nn === 0) return 0;
+  for (var i = 0; i + nn <= hn; i++) {
+    var match = true;
+    for (var j = 0; j < nn; j++) {
+      if (hay.charAt(i + j) !== needle.charAt(j)) { match = false; break; }
+    }
+    if (match) return i;
+  }
+  return -1;
+}
+
 // True for scene recall/current verbs (`ssrecall_ex`, `ssrecallt_ex`, `sscurrent_ex`,
 // `sscurrentt_ex`). Both the *_ex integer and *t_ex string families are covered.
 // TODO(hw): Rivage *t_ex is hardware-confirmed, and sscurrent_ex/sscurrentt_ex are also
 // corroborated by the Bitfocus Companion module (it keys scene feedback on those). The
 // ssrecall_ex feedback verb stays assumed - see README "Still to confirm on real hardware".
 function isSceneVerb(action) {
-  return action != null && (action.indexOf("ssrecall") === 0 || action.indexOf("sscurrent") === 0);
+  return action != null && (indexOfSafe(action, "ssrecall") === 0 || indexOfSafe(action, "sscurrent") === 0);
 }
 
 // True for scene-info verbs (`ssinfo_ex`, `ssinfot_ex`). These carry scene
 // metadata (index, name, comment, type) rather than just a scene number.
 function isSceneInfoVerb(action) {
-  return action != null && action.indexOf("ssinfo") === 0;
+  return action != null && indexOfSafe(action, "ssinfo") === 0;
 }
 
 // Parse one reply line into { status, action, address, x, y, val, isString, raw }
@@ -349,13 +371,19 @@ function parseLine(line) {
   var y = parseInt(tokens[4].value, 10);
   if (x != x) x = 0; // NaN self-inequality (avoids isNaN dependency)
   if (y != y) y = 0;
-  var last = tokens[tokens.length - 1];
+  // The value is always the token right after x,y (tokens[5]). On set/NOTIFY
+  // lines a decorative quoted label follows it (`... 1 "ON"`, `... -4760 "-47.60"`,
+  // `... -32768 "-Inf"`) - that trailing token is NOT the value, so do not read
+  // tokens[length-1] here (doing so fed the dB label string into rawToDb -> the
+  // "'/' is not allowed on the String type" crash - and set `synced` to "OFF"
+  // instead of 0, defeating echo suppression).
+  var vtok = tokens[5];
 
   var out = {
     status: status, action: action, address: address,
-    x: x, y: y, isString: last.quoted, raw: line
+    x: x, y: y, isString: vtok.quoted, raw: line
   };
-  out.val = last.quoted ? last.value : parseInt(last.value, 10);
+  out.val = vtok.quoted ? vtok.value : parseInt(vtok.value, 10);
   return out;
 }
 
@@ -726,7 +754,7 @@ function applyScene(msg) {
   // so our own Recall Scene won't auto-refresh; and gets issued right after a recall
   // are assumed to read post-recall (not mid-fade) values - see README "Still to
   // confirm on real hardware".
-  if (msg.status == "NOTIFY" && ("" + msg.action).indexOf("sscurrent") === 0) {
+  if (msg.status == "NOTIFY" && indexOfSafe("" + msg.action, "sscurrent") === 0) {
     getAllValues();
   }
 }
@@ -734,7 +762,7 @@ function applyScene(msg) {
 // Scene verb suffix for the current model: "t_ex" (DM7/Rivage string scenes) or
 // "_ex" (CL/QL, DM3 integer scenes) - derived from the recall descriptor.
 function sceneVerbSuffix() {
-  return (("" + currentTable.scene.verb).indexOf("t_ex") >= 0) ? "t_ex" : "_ex";
+  return (indexOfSafe("" + currentTable.scene.verb, "t_ex") >= 0) ? "t_ex" : "_ex";
 }
 
 // Ask the desk for a scene's metadata so Scene/Name + Scene/Comment track the

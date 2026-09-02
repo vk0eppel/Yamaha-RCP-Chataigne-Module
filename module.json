@@ -135,21 +135,21 @@
       "callback": "cmdRecallScene",
       "parameters": {
         "Scene": { "type": "String", "default": "1", "description": "CL/QL & DM3: scene number (e.g. 5). DM7 & Rivage: N.MM (e.g. 1.00)." },
-        "Bank (DM3/DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
+        "Bank (DM3 DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
       }
     },
     "Scene Recall Inc": {
       "menu": "Scene",
       "callback": "cmdSceneInc",
       "parameters": {
-        "Bank (DM3/DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
+        "Bank (DM3 DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
       }
     },
     "Scene Recall Dec": {
       "menu": "Scene",
       "callback": "cmdSceneDec",
       "parameters": {
-        "Bank (DM3/DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
+        "Bank (DM3 DM7)": { "type": "Enum", "options": { "A": "A", "B": "B" }, "default": "A" }
       }
     },
     "Generic Set": {

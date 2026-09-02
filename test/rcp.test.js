@@ -11,6 +11,10 @@
 var fs = require("fs");
 var path = require("path");
 
+// The extracted protocol block may call script.log/logWarning (e.g. temporary
+// field-debug instrumentation) - stub it so eval doesn't throw ReferenceError.
+var script = { log: function () {}, logWarning: function () {} };
+
 var src = fs.readFileSync(path.join(__dirname, "..", "Yam-RCP.js"), "utf8");
 var startMark = "RCP-PROTOCOL-START";
 var endMark = "RCP-PROTOCOL-END";
@@ -63,11 +67,45 @@ eq(parseLine("OK set MIXER:Current/InCh/Fader/Level 0 0 -600"),
 eq(parseLine('NOTIFY set MIXER:Current/InCh/Label/Name 15 0 "Kick In"'),
    { status: "NOTIFY", action: "set", address: "MIXER:Current/InCh/Label/Name", x: 15, y: 0, isString: true, raw: 'NOTIFY set MIXER:Current/InCh/Label/Name 15 0 "Kick In"', val: "Kick In" },
    "parse quoted string notify with space");
+// Real hardware appends a decorative quoted label after the value on set/NOTIFY
+// lines (`... -4760 "-47.60"`, `... 1 "ON"`). The value is tokens[5], NOT the last
+// token - reading the label crashed rawToDb on "'/' is not allowed on the String
+// type" and defeated echo suppression. Regression for the CL5 fader-move crash.
+eq(parseLine('NOTIFY set MIXER:Current/StInCh/Fader/Level 0 0 -4760 "-47.60"').val, -4760,
+   "set/NOTIFY level: value is the raw int, not the trailing dB label");
+eq(parseLine('NOTIFY set MIXER:Current/StInCh/Fader/Level 0 0 -32768 "-Inf"').val, -32768,
+   "set/NOTIFY -Inf level: value is the raw sentinel, not the label");
+eq(parseLine('OK set MIXER:Current/InCh/Fader/On 0 0 1 "ON"').val, 1,
+   "set/NOTIFY on: value is the int 1, not the \"ON\" label");
+eq(parseLine('OK set MIXER:Current/InCh/Fader/On 0 0 1 "ON"').isString, false,
+   "set/NOTIFY on: numeric value is not flagged as string");
 eq(parseLine('OKm get MIXER:Current/InCh/Label/Color 2 0 "Blue"').val, "Blue", "parse OKm color value");
 eq(parseLine('OK devinfo productname "CL5"'),
    { status: "OK", action: "devinfo", sub: "productname", val: "CL5", isString: true, raw: 'OK devinfo productname "CL5"' },
    "parse devinfo productname reply");
 eq(parseLine('OK devstatus runmode "normal"').val, "normal", "parse devstatus runmode value");
+
+// indexOfSafe / scene-verb detection: Chataigne's real script engine does not
+// reliably support String.indexOf() - it silently returned false/-1 for calls
+// that work fine under plain Node, which made every scene NOTIFY a silent
+// no-op on the CL5 even though tokenize()/parseLine() were correct. Regression
+// for that: lock in the manual charAt-based scan and its callers.
+eq(indexOfSafe("ssrecall_ex", "ssrecall"), 0, "indexOfSafe: match at start");
+eq(indexOfSafe("ssrecall_ex", "sscurrent"), -1, "indexOfSafe: no match");
+eq(indexOfSafe("ssrecallt_ex", "t_ex"), 8, "indexOfSafe: match mid-string");
+eq(indexOfSafe("abc", ""), 0, "indexOfSafe: empty needle matches at 0");
+eq(isSceneVerb("ssrecall_ex"), true, "isSceneVerb: CL/QL recall");
+eq(isSceneVerb("sscurrent_ex"), true, "isSceneVerb: CL/QL current");
+eq(isSceneVerb("ssrecallt_ex"), true, "isSceneVerb: DM7 recall");
+eq(isSceneVerb("devinfo"), false, "isSceneVerb: non-scene verb");
+eq(isSceneInfoVerb("ssinfo_ex"), true, "isSceneInfoVerb: CL/QL scene info");
+eq(isSceneInfoVerb("ssrecall_ex"), false, "isSceneInfoVerb: recall is not scene-info");
+// End-to-end: the real CL5 NOTIFY lines that exposed the bug must dispatch as
+// scene verbs, not fall through to the generic 6-token address parse.
+eq(isSceneVerb(parseLine("NOTIFY ssrecall_ex MIXER:Lib/Scene 1").action), true,
+   "parseLine+isSceneVerb: real hardware ssrecall_ex NOTIFY");
+eq(isSceneVerb(parseLine("NOTIFY sscurrent_ex MIXER:Lib/Scene 2").action), true,
+   "parseLine+isSceneVerb: real hardware sscurrent_ex NOTIFY");
 
 // scene feedback
 eq(parseLine('NOTIFY ssrecallt_ex MIXER:Lib/Scene "8.00"'),
