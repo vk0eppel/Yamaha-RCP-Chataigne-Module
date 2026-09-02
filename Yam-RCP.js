@@ -739,9 +739,26 @@ function dataReceived(data) {
 }
 
 // Reflect the console's current scene into Scene/Current (display-only). Fires on
-// recall/current NOTIFY and on the OK reply to our own recall - both are harmless.
+// recall/current NOTIFY and on the OK reply to our own recall/query.
 function applyScene(msg) {
   if (sceneCurrentParam == undefined) return;
+
+  // DM7/Rivage quirk (hardware-verified, dm7-rcp2.pcapng): the desk's spontaneous
+  // scene NOTIFYs use the NON-t_ex verbs carrying a 0-based scene INDEX (scene
+  // 1.00 -> 0), not the "N.MM" string. That index is wrong for Scene/Current and
+  // ssinfot_ex rejects it ("InvalidArgument"). Detect that shape (t_ex model +
+  // unquoted value) and instead re-query sscurrentt_ex; its OK reply is a quoted
+  // "N.MM" string that re-enters here and takes the normal path below (no loop -
+  // that reply is an OK, not a NOTIFY). Non-t_ex models (CL/QL, DM3) use the
+  // integer scene number directly and skip this.
+  if (isTExModel() && !msg.isString) {
+    if (msg.status == "NOTIFY" && indexOfSafe("" + msg.action, "sscurrent") === 0) {
+      querySceneCurrent(msg.target); // fetch the real "N.MM" (drives display + name)
+      getAllValues();                // a recall changed many values - re-read the tree
+    }
+    return;
+  }
+
   setGuarded(sceneCurrentParam, "" + msg.val);
   // Fetch this scene's name/comment, reusing the exact verb family + target the
   // desk reported (robust to per-model bank/target differences).
@@ -759,10 +776,23 @@ function applyScene(msg) {
   }
 }
 
+// True for models whose scenes are the string "N.MM" family (DM7/Rivage, verb
+// ...t_ex), false for the integer family (CL/QL, DM3, verb ..._ex).
+function isTExModel() {
+  return indexOfSafe("" + currentTable.scene.verb, "t_ex") >= 0;
+}
+
 // Scene verb suffix for the current model: "t_ex" (DM7/Rivage string scenes) or
 // "_ex" (CL/QL, DM3 integer scenes) - derived from the recall descriptor.
 function sceneVerbSuffix() {
-  return (indexOfSafe("" + currentTable.scene.verb, "t_ex") >= 0) ? "t_ex" : "_ex";
+  return isTExModel() ? "t_ex" : "_ex";
+}
+
+// Ask the desk for the current scene of a target (drives Scene/Current + the
+// chained ssinfo name query via applyScene). Uses the model's t_ex/_ex verb.
+function querySceneCurrent(target) {
+  if (target == undefined || ("" + target).length === 0) return;
+  sendLine("sscurrent" + sceneVerbSuffix() + " " + target);
 }
 
 // Ask the desk for a scene's metadata so Scene/Name + Scene/Comment track the
