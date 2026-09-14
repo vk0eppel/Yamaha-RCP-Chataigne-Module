@@ -174,6 +174,13 @@ tree** as RCP, so the specs authoritatively confirm, for those models:
   the scene *feedback* verbs (`sscurrentt_ex`, `ssupdatet_ex`, `ssinfot_ex`) not yet used
   by the module.
 - **DM7 scene inc/dec** — `event MIXER:Lib/Scene/RecallInc scene_a` (with bank suffix).
+  **Hardware-confirmed (DM7, 2026-09-14):** both `Scene Recall Inc` and `Scene Recall
+  Dec` send the bank-suffixed `event MIXER:Lib/Scene/RecallInc`/`RecallDec scene_a` and
+  the desk's current scene steps up/down accordingly. (During bring-up the Inc command
+  appeared "dead" for a long stretch — that turned out to be a Chataigne workflow trap,
+  not a code bug: editing `Yam-RCP.js` needs the module's **Reload Script** action;
+  removing + re-adding the module only reloads `module.json` and keeps running a cached
+  script, so a `module.json` callback can point at a function the stale script lacks.)
 - **Colour palettes** — confirmed on the DM7 / DM3 / Rivage editors (see the palettes
   above; DM7 and Rivage share the same 11-colour set, DM3 uses the CL/QL 8-colour set).
   Note the DM3 OSC spec's 11-colour Table 3 is *wrong* — the DM3 editor exposes only the
@@ -192,9 +199,13 @@ These are isolated in the code so they're one-line fixes:
    empty subscribe is expected to be correct. **Firmware-confirmed (DM7 V1.75):** the RCP
    server's command-dispatch classes contain **no `SUBSCRIBE`** verb (unlike its YOSC/OSC
    server, which does), and it exposes first-class push classes `ScpClientNotificationSET`/
-   `…SETN` — so the desk pushes `NOTIFY set …` with no subscribe step. What the binary can't
-   settle is *whether the originator also receives its own NOTIFY* (see item 8). To
-   verify on the wire, connect straight to the console and watch whether desk-side changes arrive as
+   `…SETN` — so the desk pushes `NOTIFY set …` with no subscribe step. **Hardware-confirmed
+   (DM7, 2026-09-14):** toggling a channel On from the desk surface arrived unsolicited as
+   `NOTIFY set MIXER:Current/Mix/Fader/On …` with no subscribe ever sent, and the module did
+   not echo a `set` back out — confirming both the empty-subscribe assumption and the echo
+   suppression (`locked` guard) at once. What's still unconfirmed is *whether the originator
+   also receives its own NOTIFY* (see item 8) — the test above was a desk-side change, not a
+   module-initiated one. To verify on the wire, connect straight to the console and watch whether desk-side changes arrive as
    `NOTIFY` (set `DEBUG = true`); if not, Wireshark Companion talking to the console on
    port 49280. (Note: the CL/QL *Editor* won't help — it speaks Yamaha's proprietary editor
    protocol, not RCP. The DM7 Editor's transport is TCP 50368/`MPRO`; CL/QL's is an older,
@@ -227,11 +238,12 @@ These are isolated in the code so they're one-line fixes:
    specs** (CL1 has 48 mono inputs; matches the Script Template `command_list.pdf` range `0–47`).
 8. **Scene re-sync on recall.** On a `sscurrent*` NOTIFY the module now re-`get`s the whole
    tree (a scene changes many values at once). **Corroborated:** Companion does the same —
-   on `sscurrent*` NOTIFY it calls `pollConsole()` (re-reads everything). Two assumptions
-   still shared with Companion, unconfirmed on a desk: (a) whether the console withholds
-   `sscurrent` from the client that *recalled* (if so, our own **Recall Scene** won't
-   auto-refresh — a follow-up), and (b) whether `get`s issued right after a recall read
-   settled (not mid-fade) values.
+   on `sscurrent*` NOTIFY it calls `pollConsole()` (re-reads everything). **Hardware-confirmed
+   (DM7, 2026-09-14):** recalling a scene from the desk surface correctly updates `Scene >
+   Current` (number) and `Scene > Name` via the `sscurrentt_ex`/`ssinfot_ex` re-query. One
+   assumption still unconfirmed: whether the console withholds `sscurrent` from the client
+   that *recalled* (if so, our own **Recall Scene** command won't auto-refresh — a follow-up;
+   only tested from the desk side so far, not from the module).
 
 _See also_ [`docs/yamaha-editor-protocol.md`](docs/yamaha-editor-protocol.md) for the
 Editor's discovery/control protocol — reconnaissance only, intentionally **not**
