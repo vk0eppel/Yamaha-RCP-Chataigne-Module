@@ -219,5 +219,29 @@ function makeModule(model) {
   ok(m.warnings[0].indexOf("MIXER:Current/Bogus") >= 0, "the real error carries its raw line");
 })();
 
+// ===========================================================================
+// DM7 HA gain is dB*100 (scale 100), NOT scale 1. Live DM7 capture (2026-09-14)
+// returned raw -600 = -6.00 dB / raw 100 = +1.00 dB on MIXER:Current/InCh/Port/HA/Gain,
+// contradicting the earlier prminfo-derived scale 1. Lock in both directions.
+// ===========================================================================
+(function () {
+  var m = makeModule("DM7");
+
+  // Read: a desk GET reply of raw -600 must show as -6.0 dB in the tree.
+  m.clear();
+  m.rx("OK get MIXER:Current/InCh/Port/HA/Gain 0 0 -600");
+  eq(m.findVal("Input Channels", "01", "HA Gain").get(), -6,
+     "DM7 HA gain read: raw -600 -> -6.0 dB (scale 100)");
+  m.rx("OK get MIXER:Current/InCh/Port/HA/Gain 0 0 100");
+  eq(m.findVal("Input Channels", "01", "HA Gain").get(), 1,
+     "DM7 HA gain read: raw 100 -> +1.0 dB (scale 100)");
+
+  // Write: setting +6 dB in the tree must transmit raw 600 (dB*100), not 6.
+  m.clear();
+  m.findVal("Input Channels", "01", "HA Gain").set(6);
+  ok(m.sentHas("set MIXER:Current/InCh/Port/HA/Gain 0 0 600"),
+     "DM7 HA gain write: +6 dB -> raw 600 (scale 100)");
+})();
+
 if (failures) { console.error("\n" + failures + "/" + count + " behavioural test(s) failed"); process.exit(1); }
 else console.log("\nAll " + count + " behavioural tests passed");

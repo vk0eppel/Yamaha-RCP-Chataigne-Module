@@ -120,11 +120,14 @@ var RIVAGE_MODELS = {
 // Head-amp (preamp) gain on Input Channels. prminfo-verified per model; the
 // address, range and scale differ, so it's a per-table descriptor. min/max/def
 // are RAW wire units (divided by scale for the dB-valued parameter):
-//   DM7    : MIXER:Current/InCh/Port/HA/Gain   -6..66 dB   scale 1    [X=120]
+//   DM7    : MIXER:Current/InCh/Port/HA/Gain   -6..66 dB   scale 100  [X=120]  (live-verified; see docs)
 //   CL/QL  : MIXER:Current/InCh/Port/HA/Gain   -6..66 dB   scale 100  [X=72]
 //   DM3    : IO:Current/InCh/HAGain            0..64 dB    scale 1    [X=16] (IO: namespace!)
 //   Rivage : Port/HA/Gain exists but X=6 (engine-local inputs; HA is rack-based) - not wired.
-var DM7_HAGAIN  = { address: "MIXER:Current/InCh/Port/HA/Gain", min: -6,   max: 66,   scale: 1,   def: 0    };
+// NOTE (2026-09-14 DM7 capture): the desk's GET replies are dB*100 (raw -600 = -6.00 dB,
+// raw 100 = +1.00 dB), i.e. scale 100 like CL/QL - NOT scale 1 as an earlier prminfo dump
+// read. Live wire wins; the old scale 1 also made Set HA Gain send ~1/100th of the dB asked.
+var DM7_HAGAIN  = { address: "MIXER:Current/InCh/Port/HA/Gain", min: -600, max: 6600, scale: 100, def: 0    };
 var CLQL_HAGAIN = { address: "MIXER:Current/InCh/Port/HA/Gain", min: -600, max: 6600, scale: 100, def: -600 };
 var DM3_HAGAIN  = { address: "IO:Current/InCh/HAGain",          min: 0,    max: 64,   scale: 1,   def: 0    };
 

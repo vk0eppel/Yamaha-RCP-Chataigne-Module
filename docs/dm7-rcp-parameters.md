@@ -127,13 +127,16 @@ Value ranges/scale/dimensionality come from a real-desk `prminfo` dump
 Two expansion params explored in detail:
 
 - **head-amp (preamp) gain** — DM7 `MIXER:Current/InCh/Port/HA/Gain`, `Xmax=120` (per input
-  channel, `y=0`), **`min=-6 max=66 default=0` dB, `scale=1`** → the wire value *is* the dB
-  (1 dB steps), unlike Fader/Level (`scale=100`). **Implemented** as a per-input-channel value
-  + a `Set HA Gain` command, wired per model from each one's `prminfo` (the module stores a
-  per-table descriptor):
-    - **DM7** — `MIXER:Current/InCh/Port/HA/Gain`, −6…66 dB, scale 1.
+  channel, `y=0`), **−6…66 dB, `scale=100`** (wire = dB×100), unlike what the static `prminfo`
+  dump read (`scale=1`). **Corrected from a live DM7 capture (2026-09-14):** the desk's GET
+  replies are dB×100 — e.g. `OK get …/HA/Gain 32 0 -600` = −6.00 dB, `… 119 0 100` = +1.00 dB,
+  with `ERROR … InvalidArgument` for channels not patched to a head amp. So DM7 HA gain is
+  encoded exactly like CL/QL, *not* like Fader/Level-vs-1dB-steps. (The earlier `scale=1` also
+  made `Set HA Gain` transmit ≈1/100th of the requested dB.) **Implemented** as a
+  per-input-channel value + a `Set HA Gain` command, wired per model from a per-table descriptor:
+    - **DM7** — `MIXER:Current/InCh/Port/HA/Gain`, −6…66 dB, **scale 100** (live-verified).
     - **CL/QL** — same address, −6…66 dB, **scale 100** (wire = dB×100).
-    - **DM3** — **`IO:Current/InCh/HAGain`** (note the `IO:` namespace, not `MIXER:`), 0…64 dB, scale 1.
+    - **DM3** — **`IO:Current/InCh/HAGain`** (note the `IO:` namespace, not `MIXER:`), 0…64 dB, scale 1 (still from prminfo only; not yet live-verified).
     - **Rivage** — `Port/HA/Gain` exists but `Xmax=6` (engine-local inputs; HA is on RPio racks), so **not wired**.
 - **`MIXER:Current/InCh/PatchSelect`** — **not** input-source patching. `min=0 max=1`,
   Rivage UI type `latchsw`: it is the input channel's **SEL / select state** (write `1` to make
