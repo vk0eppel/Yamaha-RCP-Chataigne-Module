@@ -55,6 +55,16 @@ scene-recall verb (per the lists above) and the colour palette (colour name sent
 - **DM7**: the CL/QL set plus LtGreen & White → 11.
 - **Rivage**: identical to DM7's 11-colour palette.
 
+> ⚠️ **DM7 wire colour names differ from these labels (2026-09-14 capture, unfixed).**
+> A DM7 Sync returned `Label/Color` values `"SkyBlue"`, `"LightGreen"`, and `"OFF"` —
+> not the module's `Cyan`, `LtGreen`, `Off`. The **read** path is unaffected (colour is a
+> String parameter, so the real wire name just displays through). But **`Set Channel
+> Color`** offers the module's names, so sending `LtGreen`/`Cyan`/`Off` to a DM7 (which
+> wants `LightGreen`/`SkyBlue`/`OFF`) is likely rejected. Fixing `DM7_COLORS` + the
+> command enum needs the **full 11-name DM7 wire palette** — the capture only pinned 9
+> (Blue, Orange, Yellow, Purple, Red, White, SkyBlue, LightGreen, OFF); the two the
+> module calls `Magenta`/`Green` weren't seen. Capture those before editing.
+
 The single **Set Channel Color** command lists the union of all names; a desk ignores any
 it doesn't recognise. The value tree is **collapsed by default**.
 
