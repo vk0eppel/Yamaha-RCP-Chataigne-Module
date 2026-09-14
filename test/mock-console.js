@@ -59,13 +59,22 @@ var A_COLOR = "MIXER:Current/InCh/Label/Color";
 // Scene style per model: DM7 & Rivage use the string "N.MM" (ssrecallt_ex) form;
 // CL/QL & DM3 use the integer (ssrecall_ex) form. See docs/rivage-scene-protocol.md.
 var SCENE_TEXT = { DM7: 1, DM7C: 1, RX: 1, RXEX: 1, R10: 1, PM7: 1 };
-var currentScene = 0; // integer scene index the mock currently holds
+var currentScene = 0; // scene NUMBER the mock currently holds (1-based; 0 = none)
 function sceneTextForm() { return SCENE_TEXT.hasOwnProperty(MODEL); }
-function recallVerb()  { return sceneTextForm() ? "ssrecallt_ex"  : "ssrecall_ex";  }
-function currentVerb() { return sceneTextForm() ? "sscurrentt_ex" : "sscurrent_ex"; }
 function sceneVal(n)   { return sceneTextForm() ? ('"' + n + '.00"') : ("" + n); }
 function sceneIndexOf(tok) { var f = parseFloat(stripQuotes(tok)); return isNaN(f) ? currentScene : Math.floor(f); }
-function broadcastCurrent(except) { broadcast("NOTIFY " + currentVerb() + " MIXER:Lib/Scene " + sceneVal(currentScene), except); }
+
+// Spontaneous "current scene" NOTIFY, as a real desk pushes it to the OTHER clients.
+// IMPORTANT (dm7-rcp2.pcapng): DM7 / Rivage (t_ex models) do NOT push the "N.MM"
+// string here - they push the NON-t_ex verb carrying a 0-based INDEX (scene 1.00 ->
+// 0), which the controller must ignore and re-query sscurrentt_ex for the real
+// number. Reproducing that shape is what exercises the module's re-query path.
+// CL/QL & DM3 push the integer scene number directly on MIXER:Lib/Scene.
+function broadcastCurrent(except) {
+  var target = sceneTextForm() ? "scene_a" : "MIXER:Lib/Scene";
+  var val = sceneTextForm() ? (currentScene - 1) : currentScene; // t_ex: 0-based index; else: the number
+  broadcast("NOTIFY sscurrent_ex " + target + " " + val, except);
+}
 
 // ---- state store ---------------------------------------------------------
 
@@ -241,8 +250,10 @@ function injectName(ch, name) { applyChange(A_NAME, ch - 1, 0, '"' + name + '"',
 function injectColor(ch, color) { applyChange(A_COLOR, ch - 1, 0, '"' + color + '"', null); }
 function injectScene(n) {
   currentScene = n;
-  broadcast("NOTIFY " + recallVerb() + " MIXER:Lib/Scene " + sceneVal(n), null); // a scene was recalled
-  broadcastCurrent(null);                                                        // ...and is now current
+  // Non-t_ex desks also push a recall NOTIFY; t_ex desks push only the (index-form)
+  // current NOTIFY spontaneously, and the module re-queries for the number + name.
+  if (!sceneTextForm()) broadcast("NOTIFY ssrecall_ex MIXER:Lib/Scene " + currentScene, null);
+  broadcastCurrent(null);
 }
 
 // ---- HTTP control UI -----------------------------------------------------
