@@ -412,11 +412,17 @@ var deviceParamBySub = {}; // "productname"|"deviceid"|"version" -> feedback par
 var sceneCurrentParam = null; // "Scene/Current" feedback param (current scene string)
 var sceneNameParam = null;    // "Scene/Name" feedback param (current scene's name)
 var sceneCommentParam = null; // "Scene/Comment" feedback param (current scene's comment)
+var syncTrigger = null;    // "Sync Now" button at the top of the Values panel
 var kaTickSec = 0;         // seconds counted since the last keep-alive ping
 
 // ---- lifecycle -----------------------------------------------------------
 
 function init() {
+  // A one-click "Sync Now" at the top of the Values panel (mirrors the Sync Now
+  // command, matching the Live-OSC / QLab-OSC modules). Added once here - NOT in
+  // buildValues() - so a console-model change (which tears down and rebuilds the
+  // value tree) never removes or duplicates it. Dispatched in moduleValueChanged.
+  syncTrigger = local.values.addTrigger("Sync Now", "Prime all values from the console (same as the Sync Now command).", false);
   buildValues();
   // Drive update() at 1 Hz so the keep-alive counter below ticks in whole
   // seconds regardless of the deltaTime unit. The loop is inert when the
@@ -872,6 +878,10 @@ function setGuarded(param, value) {
 
 function moduleValueChanged(value) {
   if (locked) return;
+  // The Values-panel "Sync Now" trigger. Checked by identity BEFORE the
+  // isParameter() guard below - a Chataigne Trigger is not a Parameter, so it
+  // would otherwise be dropped here.
+  if (value === syncTrigger) { syncAll(); return; }
   if (!value.isParameter()) return;
 
   // Locate the value in the tree: value -> channel container -> group container.

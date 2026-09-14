@@ -60,6 +60,9 @@ function makeModule(model) {
   Container.prototype.addFloatParameter  = function (nm, d, def) { return this._add(nm, new Param(nm, "float", def)); };
   Container.prototype.addBoolParameter   = function (nm, d, def) { return this._add(nm, new Param(nm, "bool", !!def)); };
   Container.prototype.addIntParameter    = function (nm, d, def) { return this._add(nm, new Param(nm, "int", def)); };
+  // Chataigne Triggers are NOT Parameters; model that so the module's identity
+  // check (value === syncTrigger, before its isParameter() guard) is exercised.
+  Container.prototype.addTrigger = function (nm) { var t = this._add(nm, new Param(nm, "trigger", false)); t.isParameter = function () { return false; }; return t; };
 
   var moduleParams = {
     consoleModel: new Param("consoleModel", "enum", model),
@@ -86,6 +89,7 @@ function makeModule(model) {
     sent: sent, warnings: warnings, logs: logs,
     rx: function (line) { dataReceived(line); },
     mvc: function (p) { moduleValueChanged(p); },
+    top: function (name) { return local.values.getChild(name); },
     findVal: function (groupLabel, ch, label) {
       var g = local.values.getChild(groupLabel); if (!g) return null;
       var c = g.getChild(ch); if (!c) return null;
@@ -241,6 +245,22 @@ function makeModule(model) {
   m.findVal("Input Channels", "01", "HA Gain").set(6);
   ok(m.sentHas("set MIXER:Current/InCh/Port/HA/Gain 0 0 600"),
      "DM7 HA gain write: +6 dB -> raw 600 (scale 100)");
+})();
+
+// ===========================================================================
+// Values-panel "Sync Now" trigger: pressing it primes state (same as the command),
+// and it must NOT be treated as an editable value / echoed as a set.
+// ===========================================================================
+(function () {
+  var m = makeModule("DM7");
+  var t = m.top("Sync Now");
+  ok(t != null, "Values panel exposes a 'Sync Now' trigger");
+
+  m.clear();
+  m.mvc(t); // press it
+  ok(m.sentHas("get MIXER:Current/InCh/Fader/Level 0 0"),
+     "pressing Sync Now trigger primes state (sends gets)");
+  eq(m.sentSets(), [], "the trigger itself is not echoed as a set");
 })();
 
 if (failures) { console.error("\n" + failures + "/" + count + " behavioural test(s) failed"); process.exit(1); }

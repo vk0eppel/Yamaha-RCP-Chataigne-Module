@@ -260,8 +260,9 @@ Editor's discovery/control protocol — reconnaissance only, intentionally **not
 implemented, so not a module verification item.
 
 There is no scriptable connection-status flag exposed to modules, so the module
-does not auto-sync on connect. **After connecting, run the `Sync Now` command**
-to prime values from the console (it sends a `get` for every modeled parameter).
+does not auto-sync on connect. **After connecting, press the `Sync Now` button at
+the top of the module's Values panel** (or run the `Sync Now` command) to prime
+values from the console — both send a `get` for every modeled parameter.
 
 **Keep-Alive (optional).** Some desks close an idle RCP socket, which silently kills
 `NOTIFY` feedback. The **Keep Alive Interval** parameter (seconds, default `0` = off)
