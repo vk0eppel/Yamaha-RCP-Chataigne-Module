@@ -1,0 +1,13 @@
+{
+  "name": "yamaha-rcp-chataigne-module",
+  "version": "1.0.0",
+  "description": "Yamaha RCP (CL/QL, DM7, DM3, Rivage PM) two-way control module for Chataigne",
+  "private": true,
+  "scripts": {
+    "test": "node test/rcp.test.js && node test/rcp.behavior.test.js",
+    "test:protocol": "node test/rcp.test.js",
+    "test:behavior": "node test/rcp.behavior.test.js",
+    "mock": "node test/mock-console.js"
+  },
+  "license": "SEE LICENSE IN LICENSE"
+}
