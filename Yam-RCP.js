@@ -153,6 +153,15 @@ function specsForGroup(g, colors, haGain) {
     specs.push({ id: "hagain", label: "HA Gain", address: haGain.address, type: "int",
                  scale: haGain.scale, min: haGain.min, max: haGain.max, def: haGain.def });
   }
+  if (g.key == "InCh") {
+    // Input-channel pan to the Stereo main. 1-D (y=0). Range -63(L63)..0(C)..+63(R63),
+    // scale 1 (raw == the pan value). Source: the CL/QL protocol reference
+    // (CLQLProtocol.txt: "Pan/Balance = -63 to 63") + standard Yamaha convention, and
+    // `InCh/ToSt/Pan` is listed in the DM7 firmware doc too. NOT yet confirmed on a
+    // desk's `prminfo` (see TODO) - unlike Level's dB*100, pan has no scale ambiguity.
+    specs.push({ id: "pan", label: "Pan", address: "MIXER:Current/" + g.key + "/ToSt/Pan",
+                 type: "int", scale: 1, min: -63, max: 63, def: 0 });
+  }
   return specs;
 }
 function attachSpecs(groups, colors, haGain) { for (var i = 0; i < groups.length; i++) groups[i].params = specsForGroup(groups[i], colors, haGain); }
@@ -587,6 +596,9 @@ function addChannelParam(container, spec) {
   if (spec.id == "on") {
     return container.addBoolParameter(spec.label, spec.address, true);
   }
+  if (spec.id == "pan") {
+    return container.addIntParameter(spec.label, spec.address, spec.def, spec.min, spec.max);
+  }
   // name / color are exposed as strings (enum values are just their names)
   return container.addStringParameter(spec.label, spec.address, "");
 }
@@ -662,6 +674,13 @@ function cmdSetHAGain(channel, gainDb) {
   var spec = groupParamSpec("InCh", "hagain");
   if (spec == undefined) return;
   sendLine(buildSet(spec.address, channel - 1, 0, clampInt(Math.round(gainDb * spec.scale), spec.min, spec.max), false));
+}
+
+// Input-channel pan to the Stereo main. pan -63(L)..0(C)..+63(R), scale 1.
+function cmdSetPan(channel, pan) {
+  var spec = groupParamSpec("InCh", "pan");
+  if (spec == undefined) return;
+  sendLine(buildSet(spec.address, channel - 1, 0, clampInt(Math.round(pan * spec.scale), spec.min, spec.max), false));
 }
 
 function cmdSetChannelOn(group, channel, on) {
@@ -858,7 +877,7 @@ function applyIncoming(msg) {
     var spec = entry.spec;
     var v;
     if (spec.id == "level") v = rawToDb(msg.val, spec.scale);
-    else if (spec.id == "hagain") v = msg.val / spec.scale; // raw (dB*scale) -> dB
+    else if (spec.id == "hagain" || spec.id == "pan") v = msg.val / spec.scale; // scaled int -> value (pan scale 1)
     else if (spec.id == "on") v = (msg.val == 1);
     else v = msg.val; // name / color strings
     // Record the console's value BEFORE applying it, so the value change it
@@ -918,7 +937,7 @@ function moduleValueChanged(value) {
 // The RCP wire value for a given value parameter (raw int or string).
 function wireValueOf(spec, value) {
   if (spec.id == "level") return dbToRaw(value.get(), spec.min, spec.max, spec.scale);
-  if (spec.id == "hagain") return clampInt(Math.round(value.get() * spec.scale), spec.min, spec.max);
+  if (spec.id == "hagain" || spec.id == "pan") return clampInt(Math.round(value.get() * spec.scale), spec.min, spec.max);
   if (spec.id == "on") return value.get() ? 1 : 0;
   return value.get();
 }

@@ -248,6 +248,26 @@ function makeModule(model) {
 })();
 
 // ===========================================================================
+// Input-channel Pan (InCh/ToSt/Pan): 1-D, raw -63..+63 == the value (scale 1).
+// ===========================================================================
+(function () {
+  var m = makeModule("DM7");
+  ok(m.findVal("Input Channels", "01", "Pan") != null, "DM7: tree has InCh 01 Pan");
+
+  // Read: raw pan value applies verbatim (scale 1).
+  m.clear();
+  m.rx("OK get MIXER:Current/InCh/ToSt/Pan 0 0 -63");
+  eq(m.findVal("Input Channels", "01", "Pan").get(), -63, "Pan read: raw -63 -> -63 (L63)");
+  m.rx("NOTIFY set MIXER:Current/InCh/ToSt/Pan 0 0 32");
+  eq(m.findVal("Input Channels", "01", "Pan").get(), 32, "Pan read: NOTIFY 32 -> +32 (R)");
+
+  // Write: setting the tree value transmits the raw pan (no scaling).
+  m.clear();
+  m.findVal("Input Channels", "01", "Pan").set(-40);
+  ok(m.sentHas("set MIXER:Current/InCh/ToSt/Pan 0 0 -40"), "Pan write: -40 -> raw -40");
+})();
+
+// ===========================================================================
 // Values-panel "Sync Now" trigger: pressing it primes state (same as the command),
 // and it must NOT be treated as an editable value / echoed as a set.
 // ===========================================================================

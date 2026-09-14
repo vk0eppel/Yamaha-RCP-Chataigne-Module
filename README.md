@@ -95,6 +95,7 @@ every model — an unsupported group/channel is simply ignored) and a 1-based ch
 |---|---|
 | Set Fader Level | group, channel, level in dB (−138 = −∞, +10 max) |
 | Set HA Gain | input channel, head-amp gain in dB (CL/QL & DM7 −6…+66, DM3 0…+64; Rivage HA is rack-based, not wired) |
+| Set Pan | input channel, pan to Stereo main (−63 = L63 … 0 = centre … +63 = R63) |
 | Set Channel On | group, channel, on/off |
 | Set Channel Name | group, channel, string |
 | Set Channel Color | group, channel, colour name (per-model palette: CL/QL & DM3 = 9, DM7 & Rivage = 11) |
@@ -105,7 +106,8 @@ every model — an unsupported group/channel is simply ignored) and a 1-based ch
 
 Feedback appears under **Values → `<group>` → NN** (e.g. `Input Channels → 01`,
 `Mix → 03`, `DCA → 02`) with Level / On / Name / Color (plus **HA Gain** on CL/QL, DM3 &
-DM7 input channels — Rivage HA is rack-based and not wired). **Values → Scene** shows
+DM7 input channels — Rivage HA is rack-based and not wired — and **Pan** to the Stereo
+main on input channels, −63…+63). **Values → Scene** shows
 **Current** (the current scene number — a string, so `"8"` on CL/QL and `"8.00"` on
 DM7/Rivage) plus **Name** and **Comment**, fetched via `ssinfo(t)_ex` on Sync and on
 every scene change; **Values → Device** shows the model the console reports. (Scene
