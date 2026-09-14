@@ -98,6 +98,9 @@ var CLQL_MODELS = {
   QL5: { InCh: 64, StInCh: 8, Mix: 16, Mtrx: 8, St: 3, DCA: 16, MuteMaster: 8 }
 };
 var DM7_MODELS = {
+  // DM7 counts live-confirmed (2026-09-14 Sync): the desk answered OK for exactly
+  // InCh 0-119, Mix 0-47, Mtrx 0-11, St 0-3, DCA 0-23, MuteGrpCtrl 0-11 (no
+  // InvalidArgument at any group's top edge). DM7C still from spec only.
   DM7:  { InCh: 120, Mix: 48, Mtrx: 12, St: 4, DCA: 24, MuteGrpCtrl: 12 },
   DM7C: { InCh: 72,  Mix: 48, Mtrx: 12, St: 4, DCA: 24, MuteGrpCtrl: 12 } // DM7 Compact
 };
