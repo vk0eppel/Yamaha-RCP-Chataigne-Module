@@ -34,11 +34,16 @@ var DEBUG = false; // flip to true during bring-up to log every line in/out
 //   CL/QL  : 8 colours + Off.
 //   DM3    : same 8-colour set as CL/QL (the DM3 OSC spec's 11-colour Table 3 is wrong
 //            per the editor).
-//   DM7    : 11 - the CL/QL set plus LtGreen & White.
+//   DM7    : 11 wire names, live-confirmed from a 2026-09-14 capture (indices 0-9
+//            plus OFF): Blue, Orange, Yellow, Purple, SkyBlue, Pink, Red, Green,
+//            LightGreen, White, OFF. Gotcha: the DM7 UI/editor *labels* three of these
+//            with the CL/QL names ("Cyan", "Magenta", "LtGreen"), but the RCP wire
+//            strings are SkyBlue / Pink / LightGreen respectively (and OFF not Off).
+//            These wire strings are what must go on the wire, not the on-desk labels.
 //   Rivage : identical to DM7's 11-colour palette.
 var CLQL_COLORS   = ["Blue", "Orange", "Yellow", "Purple", "Cyan", "Magenta", "Red", "Green", "Off"];
 var DM3_COLORS    = ["Purple", "Magenta", "Red", "Orange", "Yellow", "Blue", "Cyan", "Green", "Off"];
-var DM7_COLORS    = ["Blue", "Orange", "Yellow", "Purple", "Cyan", "Magenta", "Red", "Green", "LtGreen", "White", "Off"];
+var DM7_COLORS    = ["Blue", "Orange", "Yellow", "Purple", "SkyBlue", "Pink", "Red", "Green", "LightGreen", "White", "OFF"];
 var RIVAGE_COLORS = DM7_COLORS;
 
 // Channel groups. The fader groups share the same address shape

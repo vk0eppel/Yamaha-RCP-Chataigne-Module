@@ -126,13 +126,16 @@
             "Orange": "Orange",
             "Yellow": "Yellow",
             "Purple": "Purple",
-            "Cyan": "Cyan",
-            "Magenta": "Magenta",
             "Red": "Red",
             "Green": "Green",
-            "LtGreen (DM7, Rivage)": "LtGreen",
+            "Cyan (CL/QL, DM3)": "Cyan",
+            "Magenta (CL/QL, DM3)": "Magenta",
+            "Off (CL/QL, DM3)": "Off",
+            "Cyan → SkyBlue (DM7, Rivage)": "SkyBlue",
+            "Magenta → Pink (DM7, Rivage)": "Pink",
+            "LtGreen → LightGreen (DM7, Rivage)": "LightGreen",
             "White (DM7, Rivage)": "White",
-            "Off (uncolored)": "Off"
+            "Off → OFF (DM7, Rivage)": "OFF"
           },
           "default": "Blue"
         }
