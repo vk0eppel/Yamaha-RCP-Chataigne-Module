@@ -673,12 +673,21 @@ function cmdSetFaderLevel(group, channel, levelDb) {
   sendLine(buildSet(spec.address, channel - 1, 0, dbToRaw(levelDb, spec.min, spec.max, spec.scale), false));
 }
 
+// HA gain wire value: snap to a whole dB first (the desk quantizes HA gain to 1 dB
+// steps - live-observed on DM7, which rounds any sub-step value to the nearest dB),
+// then apply scale. Keeps the tree in sync with the desk and lets the synced-guard
+// collapse a drag's flood of near-identical sets. (round(dB) then *scale, not
+// round(dB*scale).)
+function haGainRaw(spec, gainDb) {
+  return clampInt(Math.round(gainDb) * spec.scale, spec.min, spec.max);
+}
+
 // Head-amp gain on an input channel (dB). Only sent for models that expose it
 // (DM7); a no-op on models without a modeled InCh HA gain.
 function cmdSetHAGain(channel, gainDb) {
   var spec = groupParamSpec("InCh", "hagain");
   if (spec == undefined) return;
-  sendLine(buildSet(spec.address, channel - 1, 0, clampInt(Math.round(gainDb * spec.scale), spec.min, spec.max), false));
+  sendLine(buildSet(spec.address, channel - 1, 0, haGainRaw(spec, gainDb), false));
 }
 
 // Input-channel pan to the Stereo main. pan -63(L)..0(C)..+63(R), scale 1.
@@ -942,7 +951,8 @@ function moduleValueChanged(value) {
 // The RCP wire value for a given value parameter (raw int or string).
 function wireValueOf(spec, value) {
   if (spec.id == "level") return dbToRaw(value.get(), spec.min, spec.max, spec.scale);
-  if (spec.id == "hagain" || spec.id == "pan") return clampInt(Math.round(value.get() * spec.scale), spec.min, spec.max);
+  if (spec.id == "hagain") return haGainRaw(spec, value.get());
+  if (spec.id == "pan") return clampInt(Math.round(value.get() * spec.scale), spec.min, spec.max);
   if (spec.id == "on") return value.get() ? 1 : 0;
   return value.get();
 }

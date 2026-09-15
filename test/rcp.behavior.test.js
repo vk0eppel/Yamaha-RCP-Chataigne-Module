@@ -245,6 +245,26 @@ function makeModule(model) {
   m.findVal("Input Channels", "01", "HA Gain").set(6);
   ok(m.sentHas("set MIXER:Current/InCh/Port/HA/Gain 0 0 600"),
      "DM7 HA gain write: +6 dB -> raw 600 (scale 100)");
+
+  // Write snaps to whole dB (desk quantizes HA gain to 1 dB steps): a sub-step
+  // 5.79 dB must transmit raw 600 (round(dB) then *100), not 579. Use a fresh
+  // channel (02) so the synced-guard doesn't pre-empt it.
+  m.clear();
+  m.findVal("Input Channels", "02", "HA Gain").set(5.79);
+  ok(m.sentHas("set MIXER:Current/InCh/Port/HA/Gain 1 0 600"),
+     "DM7 HA gain write: 5.79 dB snaps to whole dB -> raw 600");
+  ok(!m.sentHas("set MIXER:Current/InCh/Port/HA/Gain 1 0 579"),
+     "DM7 HA gain write: does NOT send the sub-step raw 579");
+
+  // And the snap collapses a drag flood: ch 02 is already synced at 600 (from the
+  // 5.79 set above). Successive sub-step values in the same 1 dB band all snap to
+  // 600 == the synced value, so the guard suppresses them - no set goes out.
+  m.clear();
+  m.findVal("Input Channels", "02", "HA Gain").set(6);
+  m.findVal("Input Channels", "02", "HA Gain").set(6.21);
+  m.findVal("Input Channels", "02", "HA Gain").set(6.42);
+  eq(m.sentSets().length, 0,
+     "DM7 HA gain write: sub-step drift within 1 dB sends nothing (flood collapsed)");
 })();
 
 // ===========================================================================
