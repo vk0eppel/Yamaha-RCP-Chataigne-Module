@@ -313,6 +313,52 @@ function makeModule(model) {
 })();
 
 // ===========================================================================
+// Tier-1 extras (DM7-firmware-confirmed): Cue/Solo, HPF/LPF/EQ On, To-St On,
+// Icon. Booleans read as 0/1 and write bare; Cue lives at Cue/<group>/On.
+// ===========================================================================
+(function () {
+  var m = makeModule("DM7");
+
+  // Cue is a boolean at MIXER:Current/Cue/InCh/On (not under the strip's own key).
+  var cue = m.findVal("Input Channels", "01", "Cue");
+  ok(cue != null, "DM7: tree has InCh 01 Cue");
+  eq(cue._t, "bool", "DM7: Cue is a bool param");
+  m.clear();
+  m.rx("OK get MIXER:Current/Cue/InCh/On 0 0 1");
+  eq(cue.get(), true, "Cue read: wire 1 -> true");
+  m.rx("NOTIFY set MIXER:Current/Cue/InCh/On 0 0 0");
+  eq(cue.get(), false, "Cue read: NOTIFY 0 -> false");
+  m.clear();
+  cue.set(true);
+  ok(m.sentHas("set MIXER:Current/Cue/InCh/On 0 0 1"), "Cue write: true -> Cue/InCh/On 1 (bare int)");
+  ok(!m.sentHas('"1"'), "Cue write: value is a bare int, not quoted");
+
+  // HPF On is a boolean at InCh/HPF/On.
+  var hpf = m.findVal("Input Channels", "01", "HPF On");
+  ok(hpf != null && hpf._t == "bool", "DM7: tree has InCh 01 HPF On (bool)");
+  m.clear();
+  hpf.set(true);
+  ok(m.sentHas("set MIXER:Current/InCh/HPF/On 0 0 1"), "HPF On write: InCh/HPF/On 1");
+
+  // To-St On boolean at InCh/ToSt/On (pairs with the existing ToSt/Pan).
+  var tost = m.findVal("Input Channels", "01", "To St On");
+  ok(tost != null && tost._t == "bool", "DM7: tree has InCh 01 To St On (bool)");
+
+  // Icon is a free-text string like Name.
+  var icon = m.findVal("Input Channels", "01", "Icon");
+  ok(icon != null && icon._t == "string", "DM7: tree has InCh 01 Icon (string)");
+  m.clear();
+  m.rx('OK get MIXER:Current/InCh/Label/Icon 0 0 "Vocal"');
+  eq(icon.get(), "Vocal", "Icon read: wire string stored verbatim");
+
+  // The sync poll now includes the new addresses.
+  m.clear();
+  m.mvc(m.top("Sync Now"));
+  ok(m.sentHas("get MIXER:Current/Cue/InCh/On 0 0"), "Sync polls Cue/InCh/On");
+  ok(m.sentHas("get MIXER:Current/InCh/HPF/On 0 0"), "Sync polls InCh/HPF/On");
+})();
+
+// ===========================================================================
 // Values-panel "Sync Now" trigger: pressing it primes state (same as the command),
 // and it must NOT be treated as an editable value / echoed as a set.
 // ===========================================================================

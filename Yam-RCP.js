@@ -147,16 +147,35 @@ var DM3_HAGAIN  = { address: "IO:Current/InCh/HAGain",          min: 0,    max: 
 function specsForGroup(g, colors, haGain) {
   if (g.mute) {
     return [
-      { id: "on",   label: "On",   address: "MIXER:Current/" + g.key + "/On",        type: "int",    scale: 1, min: 0, max: 1 },
+      { id: "on",   label: "On",   address: "MIXER:Current/" + g.key + "/On",        type: "bool",   scale: 1, min: 0, max: 1 },
       { id: "name", label: "Name", address: "MIXER:Current/" + g.key + "/Label/Name", type: "string", scale: 1 }
     ];
   }
   var specs = [
     { id: "level", label: "Level", address: "MIXER:Current/" + g.key + "/Fader/Level", type: "int",    scale: 100, min: -32768, max: 1000 },
-    { id: "on",    label: "On",    address: "MIXER:Current/" + g.key + "/Fader/On",    type: "int",    scale: 1, min: 0, max: 1 },
+    { id: "on",    label: "On",    address: "MIXER:Current/" + g.key + "/Fader/On",    type: "bool",   scale: 1, min: 0, max: 1 },
     { id: "name",  label: "Name",  address: "MIXER:Current/" + g.key + "/Label/Name",  type: "string", scale: 1 },
     { id: "color", label: "Color", address: "MIXER:Current/" + g.key + "/Label/Color", type: "enum",   scale: 1, options: colors }
   ];
+  // Tier-1 extras, DM7-firmware-confirmed addresses (dm7_mixer_addresses.txt). Other
+  // models are inferred (same RCP MIXER: family) - an address a model lacks just
+  // ERRORs on poll and is quietly ignored (bulk-poll noise is already suppressed).
+  // All booleans, so no wire-scale ambiguity. Icon is a free-text string like Name.
+  specs.push({ id: "icon", label: "Icon", address: "MIXER:Current/" + g.key + "/Label/Icon", type: "string", scale: 1 });
+  // Cue / Solo lives in its own section indexed by the strip's x: Cue/<group>/On.
+  if (g.key == "InCh" || g.key == "Mix" || g.key == "Mtrx" || g.key == "St" || g.key == "DCA") {
+    specs.push({ id: "cue", label: "Cue", address: "MIXER:Current/Cue/" + g.key + "/On", type: "bool", scale: 1, min: 0, max: 1 });
+  }
+  // Filters / EQ in-out (channels & buses that have them: InCh, Mix, Mtrx).
+  if (g.key == "InCh" || g.key == "Mix" || g.key == "Mtrx") {
+    specs.push({ id: "hpfon", label: "HPF On", address: "MIXER:Current/" + g.key + "/HPF/On", type: "bool", scale: 1, min: 0, max: 1 });
+    specs.push({ id: "lpfon", label: "LPF On", address: "MIXER:Current/" + g.key + "/LPF/On", type: "bool", scale: 1, min: 0, max: 1 });
+    specs.push({ id: "peqon", label: "EQ On",  address: "MIXER:Current/" + g.key + "/PEQ/On", type: "bool", scale: 1, min: 0, max: 1 });
+  }
+  // To-Stereo assign (pairs with the ToSt/Pan below). Sources that route to St.
+  if (g.key == "InCh" || g.key == "Mix") {
+    specs.push({ id: "toston", label: "To St On", address: "MIXER:Current/" + g.key + "/ToSt/On", type: "bool", scale: 1, min: 0, max: 1 });
+  }
   if (g.key == "InCh" && haGain) {
     specs.push({ id: "hagain", label: "HA Gain", address: haGain.address, type: "int",
                  scale: haGain.scale, min: haGain.min, max: haGain.max, def: haGain.def });
@@ -601,7 +620,7 @@ function addChannelParam(container, spec) {
   if (spec.id == "hagain") {
     return container.addFloatParameter(spec.label, spec.address, spec.def / spec.scale, spec.min / spec.scale, spec.max / spec.scale);
   }
-  if (spec.id == "on") {
+  if (spec.type == "bool") {
     return container.addBoolParameter(spec.label, spec.address, true);
   }
   if (spec.id == "pan") {
@@ -900,8 +919,8 @@ function applyIncoming(msg) {
     var v;
     if (spec.id == "level") v = rawToDb(msg.val, spec.scale);
     else if (spec.id == "hagain" || spec.id == "pan") v = msg.val / spec.scale; // scaled int -> value (pan scale 1)
-    else if (spec.id == "on") v = (msg.val == 1);
-    else v = msg.val; // name / color strings
+    else if (spec.type == "bool") v = (msg.val == 1);
+    else v = msg.val; // name / color / icon strings
     // Record the console's value BEFORE applying it, so the value change it
     // triggers (which may fire asynchronously) is recognised as an echo.
     entry.synced = msg.val;
@@ -961,7 +980,7 @@ function wireValueOf(spec, value) {
   if (spec.id == "level") return dbToRaw(value.get(), spec.min, spec.max, spec.scale);
   if (spec.id == "hagain") return haGainRaw(spec, value.get());
   if (spec.id == "pan") return clampInt(Math.round(value.get() * spec.scale), spec.min, spec.max);
-  if (spec.id == "on") return value.get() ? 1 : 0;
+  if (spec.type == "bool") return value.get() ? 1 : 0;
   return value.get();
 }
 
