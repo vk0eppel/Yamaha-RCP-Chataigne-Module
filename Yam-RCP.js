@@ -34,16 +34,19 @@ var DEBUG = false; // flip to true during bring-up to log every line in/out
 //   CL/QL  : 8 colours + Off.
 //   DM3    : same 8-colour set as CL/QL (the DM3 OSC spec's 11-colour Table 3 is wrong
 //            per the editor).
-//   DM7    : 11 wire names, live-confirmed from a 2026-09-14 capture (indices 0-9
-//            plus OFF): Blue, Orange, Yellow, Purple, SkyBlue, Pink, Red, Green,
-//            LightGreen, White, OFF. Gotcha: the DM7 UI/editor *labels* three of these
-//            with the CL/QL names ("Cyan", "Magenta", "LtGreen"), but the RCP wire
-//            strings are SkyBlue / Pink / LightGreen respectively (and OFF not Off).
-//            These wire strings are what must go on the wire, not the on-desk labels.
+//   DM7    : 11 colours, live-confirmed on hardware 2026-09-14/15. Two gotchas:
+//            (1) the DM7 UI/editor *labels* three swatches with the CL/QL names
+//                ("Cyan", "Magenta", "LtGreen"), but the RCP wire strings are
+//                SkyBlue / Pink / LightGreen. Send the wire string, not the label.
+//            (2) the off/no-colour state is ASYMMETRIC: the desk *reports* "OFF" on
+//                read but REJECTS "OFF" on write (InvalidArgument) - the write token
+//                is "Off". This array holds the WRITE tokens (used by Set Channel
+//                Color), so it uses "Off"; an incoming read of "OFF" is just shown
+//                verbatim in the free-text Colour field, no match needed.
 //   Rivage : identical to DM7's 11-colour palette.
 var CLQL_COLORS   = ["Blue", "Orange", "Yellow", "Purple", "Cyan", "Magenta", "Red", "Green", "Off"];
 var DM3_COLORS    = ["Purple", "Magenta", "Red", "Orange", "Yellow", "Blue", "Cyan", "Green", "Off"];
-var DM7_COLORS    = ["Blue", "Orange", "Yellow", "Purple", "SkyBlue", "Pink", "Red", "Green", "LightGreen", "White", "OFF"];
+var DM7_COLORS    = ["Blue", "Orange", "Yellow", "Purple", "SkyBlue", "Pink", "Red", "Green", "LightGreen", "White", "Off"];
 var RIVAGE_COLORS = DM7_COLORS;
 
 // Channel groups. The fader groups share the same address shape
@@ -604,7 +607,12 @@ function addChannelParam(container, spec) {
   if (spec.id == "pan") {
     return container.addIntParameter(spec.label, spec.address, spec.def, spec.min, spec.max);
   }
-  // name / color are exposed as strings (enum values are just their names)
+  // name / colour are exposed as strings. A colour *picker* isn't feasible here: the
+  // Chataigne (JUCE) script engine can't build a 9-11 option EnumParameter - inline
+  // options hit a native-call argument cap (only ~8 survive), there's no addOption(),
+  // and no Function.apply to work around it. So colour stays free text in the tree;
+  // the model-gated "Set Channel Color" command (a static module.json enum) is the
+  // picker. The wire value is the quoted colour name either way (isStringSpec).
   return container.addStringParameter(spec.label, spec.address, "");
 }
 

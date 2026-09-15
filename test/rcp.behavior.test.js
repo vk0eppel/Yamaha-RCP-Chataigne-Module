@@ -288,6 +288,31 @@ function makeModule(model) {
 })();
 
 // ===========================================================================
+// Channel colour: a free-text string in the tree (the JUCE script engine can't
+// build a 9-11 option enum picker). Read stores the wire name; write sends it
+// quoted. The model-gated "Set Channel Color" command is the actual picker.
+// ===========================================================================
+(function () {
+  var m = makeModule("DM7");
+  var col = m.findVal("Input Channels", "01", "Color");
+  ok(col != null, "DM7: tree has InCh 01 Color");
+  eq(col._t, "string", "DM7: Color is a free-text string param");
+
+  // Read: an incoming DM7 wire colour is stored verbatim.
+  m.clear();
+  m.rx('OK get MIXER:Current/InCh/Label/Color 0 0 "SkyBlue"');
+  eq(col.get(), "SkyBlue", "Color read: wire 'SkyBlue' stored verbatim");
+  m.rx('NOTIFY set MIXER:Current/InCh/Label/Color 0 0 "OFF"');
+  eq(col.get(), "OFF", "Color read: NOTIFY 'OFF' stored verbatim");
+
+  // Write: setting the value transmits the quoted wire name.
+  m.clear();
+  col.set("Pink");
+  ok(m.sentHas('set MIXER:Current/InCh/Label/Color 0 0 "Pink"'),
+     "Color write: setting Pink sends the quoted wire name");
+})();
+
+// ===========================================================================
 // Values-panel "Sync Now" trigger: pressing it primes state (same as the command),
 // and it must NOT be treated as an editable value / echoed as a set.
 // ===========================================================================
